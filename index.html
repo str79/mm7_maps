@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8">
+		<title>Might and Magic 7 maps</title>
+		<!--jquery-->
+		<script
+		src="https://code.jquery.com/jquery-2.2.4.min.js"
+		integrity="sha256-BbhdlvQf/xTY9gja0Dq3HiwQF8LaCRTXxZKRutelT44="
+		crossorigin="anonymous"></script>
+		<!--bootstrap css-->
+		<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css" integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh" crossorigin="anonymous">
+		<!--main js-->
+		<script src="main.js"></script>
+		<!--main css-->
+		<link rel="stylesheet" href="main.css">
+		<!--route mapping is used-->
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/leader-line/1.0.7/leader-line.min.js"></script>
+	</head>
+	<body>
+		<div class="gameName hidden">mm7</div>
+		<div class="helpp">
+			<div class="container">
+				<div class="langSelect">
+					<h2 class="langCh unselectable" >LANG</h2>
+					<div class="boxsel list-group hide">
+						<div class="list-group-item">
+							<span class="icon"></span>
+							RU
+						</div>
+						<div class="list-group-item">
+							<span class="icon"></span>
+							EN
+						</div>
+					</div>
+				</div>
+				<h2 class="langCh unselectable" >HELP</h2>
+				<div class="list-group hide">
+					<div href="#" class="list-group-item">
+						<p class="list-group-item-text">
+							v=2.012<br>
+							<span class="langCh">
+								HELP_TEXT
+							</span>
+						</p>
+					</div>
+				</div>
+			</div>			
+		</div>
+		<div id="flycMenu" class="hide">
+			<div href="#" class="list-group-item"> 
+				<h4 class="langCh list-group-item-heading">ACTIONS</h4> 
+				<p class="langCh list-group-item-text" data-action="keymove">
+					<span class="icon"></span>
+					ACT_KEYMOVE
+				</p>
+				<p class="langCh list-group-item-text" data-action="gmove">
+					<span class="icon"></span>
+					ACT_GLOBALMOVE
+				</p>
+				<p class="langCh list-group-item-text" data-action="gsize">
+					<span class="icon"></span>
+					ACT_GLOBALSIZE
+				</p>
+				<p class="langCh list-group-item-text" data-action="invIndex">
+					<span class="icon"></span>
+					ACT_YONGUP
+				</p>
+				<p class="langCh list-group-item-text" data-action="routeShow">
+					<span class="icon"></span>
+					ACT_BUILDROUTE
+				</p>
+				<p class="langCh list-group-item-text" data-action="drawLines">
+					<span class="icon"></span>
+					ACT_TEMPGLINES
+				</p>
+			</div>		
+		</div>		
+		<div id="flyaoMenu" class="hide">
+			<div href="#" class="list-group-item"> 
+				<h4 class="langCh list-group-item-heading">FASTACT</h4> 
+				<p class="langCh list-group-item-text savemap">
+					FASTACT_SAVEMAP
+					<span class="runicon"></span>
+				</p>
+				<p class="langCh list-group-item-text newprof">
+					FASTACT_NEWEMAP
+					<span class="runicon"></span>
+				</p>
+				<p class="langCh list-group-item-text newgroup">
+					FASTACT_NEWGROUP
+					<span class="runicon"></span>
+				</p>
+				<p class="langCh list-group-item-text newpoint">
+					FASTACT_NEWPOINT
+					<span class="runicon"></span>
+				</p>
+				<p class="langCh list-group-item-text compress">
+					FASTACT_COMPRESS
+					<span class="runicon"></span>
+				</p>
+				<p class="langCh list-group-item-text ignordel">
+					FASTACT_IGNORDEL
+					<span class="runicon"></span>
+				</p>
+			</div>		
+		</div>		
+		<div id="flyProf">
+			<div class="container">
+				<h2 class="dib langCh unselectable">MAPS</h2>
+				<div class="searchbtn dib">&#128270;</div>
+				<div class="menuaction dib">&#x1F7C8;</div>
+				<div class="oneaction dib">&#9889;</div>
+				<div class="searchdlg list-group hide">
+					<div href="#" class="list-group-item custom">
+						<h4 class="list-group-item-heading"><input type="text" placeholder="Что ищем" class="searchInput text"></h4>
+					</div>
+				</div>
+				<div class="list-group mainfly">
+					<div href="#" class="list-group-item">
+						<h4 class="list-group-item-heading"><span class="icon"></span><span class="text">&nbsp;Общая группа</span></h4>
+					</div>
+				</div>
+			</div>
+		</div>
+		<div id="mainpic" class="dib">
+			<img src="" alt="">
+		</div>
+		<div id="flylist" class="unselectable">
+			<div class="container">
+				<!-- Группы, те что слева -->
+				<h2 class="langCh">GROUPS</h2>
+				<div class="list-group maingroups">
+					<div class="btall">
+						<span class="allon langCh">GROUPS_ALLON</span> /
+						<span class="alloff langCh">GROUPS_ALLOFF</span>
+					</div>
+					<div href="#" class="list-group-item">
+						<h4 class="list-group-item-heading"><span class="icon"></span><span class="text langCh">&nbsp;GROUPS_COMMON</span></h4>
+					</div>
+					<div href="#" class="list-group-item autohist">
+						<h4 class="list-group-item-heading"><span class="icon"></span><span class="text langCh">&nbsp;GROUPS_HISTORY</span></h4>
+					</div>
+				</div>
+				<!-- Полотно для инструментов рисования -->
+				<div class="drawingTools">
+					<div href="#" class="list-group-item">
+						<div class="setColors">
+							<div class="first">
+								<div data-color="#000" class="mark"></div>
+							</div>
+							<div class="back">
+								<div data-color="#fff" class="mark"></div>	
+							</div>
+							<input class="hidden" type="color" name="setcolors">
+						</div>
+					</div>
+				</div>
+				
+			</div>
+		</div>
+		<!-- образец для элемента текста группы -->
+		<div id="tmpHistname" class="langCh hide">
+			HISTNAME
+		</div>
+		<div id="tmpGroup" class="hide">
+			<div href="#" class="list-group-item">
+				<h4 class="list-group-item-heading"><span class="icon"></span><span class="text">&nbsp;#text#</span></h4>
+			</div>
+		</div>
+		<div id="tmpContGroupMenu" class="hide">
+			<div href="#" class="list-group-item"> 
+				<h4 class="langCh list-group-item-heading">GROUPCMENU</h4> 
+				<p class="langCh list-group-item-text groupmove">
+					GROUPCMENU_MOVE
+					<span class="runicon"></span>
+				</p>
+				<p class="langCh list-group-item-text groupremove">
+					GROUPCMENU_REMOVE
+					<span class="runicon"></span>
+				</p>
+			</div>		
+		</div>
+		<div id="tmpContMenu" class="hide">
+			<div href="#" class="list-group-item"> 
+				<h4 class="langCh list-group-item-heading">CONTMENU</h4> 
+				<p class="langCh list-group-item-text chgroup">
+					CONTMENU_CHGROUP
+					<span class="runicon"></span>
+				</p>
+				<p class="langCh list-group-item-text delpoint">
+					CONTMENU_DELPOINT
+					<span class="runicon"></span>
+				</p>
+				<p class="langCh list-group-item-text toIgnore">
+					CONTMENU_ADDIGNORE
+					<span class="runicon"></span>
+				</p>			</div>		
+		</div>
+		<div id="tmplist" class="hide">
+			<p class="list-group-item-text">
+				<span class="icon"></span>
+				#text#
+			</p>
+		</div>
+		<div id="tmpbtn" class="hide">
+			<div class="mycircle">
+				#number#
+			</div>
+		</div>
+		<div class="objcirclept">
+			<div class="ptDescr">
+			</div>
+		</div>
+		<div class="selectpt">
+		</div>
+	</body>
+</html>

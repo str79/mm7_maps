@@ -1,3 +1,3 @@
 # mm7_maps
 
-engine version 1.25
+Engine version see in help. Help read on runing programm. Run index.html.
