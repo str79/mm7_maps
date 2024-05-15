@@ -548,6 +548,7 @@ $(document).ready(function() {
 		return (str + '').replace(/[\\"']/g, '\\$&').replace(/\u0000/g, '\\0');
 	}
 	function drawpoint(tmppoint,ptarr,nindex){
+		//для вывода в файл settings, формирует массив точек
 		ptprops='';
 		for (prop in self[Profiles[nindex].pointarr][tmppoint]) {
 			if (prop=='PointIndex'){continue;}
@@ -574,10 +575,10 @@ $(document).ready(function() {
 		//массив соответствий группы и ид
 		var arrgroup={};
 		var flylist;
-		var cntgroups=$('#flylist .list-group-item').not('.autohist').length;
+		var cntgroups=$('#flylist .maingroups .list-group-item').not('.autohist').length;
 		var groupi=0;
 		for (groupi=0;groupi<cntgroups;groupi++){
-			flylist=$('#flylist .list-group-item:eq('+groupi+') .list-group-item-text');
+			flylist=$('#flylist .maingroups .list-group-item:eq('+groupi+') .list-group-item-text');
 			flylist.each(function(){arrgroup[$(this).data('id')] = groupi;});
 		}
 		var tmpval='';
@@ -650,7 +651,7 @@ $(document).ready(function() {
 			{
 				profhead+="\n\t"+'{'+"\n"+tmpproftext+'\t},';
 			}
-			//getall old maps
+			//getall old points
 			ptarr='';
 			if (alton){
 				for (tmppoint in arrsort[nindex]) {
@@ -665,9 +666,8 @@ $(document).ready(function() {
 			tmpprof[nindex]='var '+Profiles[nindex].pointarr+'=['+"\n"+ptarr+'];'+"\n";
 		}
 		curtext+='var Profiles=['+profhead+"\n"+']'+"\n\n";
-		//старые профили
+		//Текущий профиль, точки
 		var curbtn='';
-		//flylist=$('#mainpic .mycircle:not(.hide)');
 		flylist=$('#mainpic .mycircle');
 		function drawpointCur(el,group){
 			var elemmap=$(el);
@@ -683,8 +683,8 @@ $(document).ready(function() {
 			curbtn+="\t"+'},'+"\n";
 			return curbtn;
 		}
+		//собираем точки
 		if (alton){
-			//собираем точки
 			for (tmppoint in arrsort[profileIndex]) {
 				el=flylist.filter('#'+preId+(Profiles[profileIndex].StartIndex+arrsort[profileIndex][tmppoint]));
 				curbtn+=drawpointCur(el,arrgroup[el.attr('id')]);
@@ -1716,6 +1716,7 @@ $(document).ready(function() {
 	// найдет соответствующие ему элементы, которые
 	// при этом попадают в видимую область окна
 	function inWindow(wnd,currentEls){
+		if (!wnd){console.log('warning, wnd is null');return [];}
 		var wndOffset = wnd.offset();
 		var wndHeight = wnd.height();
 		var wndWidth = wnd.width();
