@@ -24,6 +24,7 @@ var langStr={
 	GROUPCMENU:'Group menu',
 	GROUPCMENU_MOVE:'Move',
 	GROUPCMENU_REMOVE:'Remove',
+	CONTMENU:'Point menu',
 	CONTMENU_CHGROUP:'Change group',
 	CONTMENU_DELPOINT:'Remove Item',
 	CONTMENU_ADDIGNORE:'Ignore for routes',

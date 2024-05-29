@@ -579,7 +579,7 @@ $(document).ready(function() {
 		var groupi=0;
 		for (groupi=0;groupi<cntgroups;groupi++){
 			flylist=$('#flylist .maingroups .list-group-item:eq('+groupi+') .list-group-item-text');
-			flylist.each(function(){arrgroup[$(this).data('id')] = groupi;});
+			flylist.each(function(){let thisid=$(this).data('id'); if (thisid!=undefined){arrgroup[thisid] = groupi;} });
 		}
 		var tmpval='';
 		var tmpproftext='';

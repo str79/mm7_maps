@@ -10,6 +10,16 @@ var Profiles=[
 		'GpoupList':['Учителя','Квесты','Разное','Заметки','Средней важности'],
 	},
 	{
+		'Name':'Земля гигантов',
+		'File':'eofol.gif',
+		'pointarr':'eofolPt',
+		'offsetTop':'360px',
+		'offsetLeft':'653px',
+		'StartIndex':1,
+		'zoom':3.5,
+		'GpoupList':['Учителя','Квесты','Разное','Не важное'],
+	},
+	{
 		'Name':'Гора нигон',
 		'File':'nigon.gif',
 		'pointarr':'nigonPt',
@@ -49,18 +59,52 @@ var Profiles=[
 		'zoom':4.6,
 		'GpoupList':['Разное','Полезное','Средней важности','Не важное'],
 	},
-	{
-		'Name':'Земля гигантов',
-		'File':'eofol.gif',
-		'pointarr':'eofolPt',
-		'offsetTop':'360px',
-		'offsetLeft':'653px',
-		'StartIndex':1,
-		'zoom':3.5,
-		'GpoupList':['Учителя','Квесты','Разное','Не важное'],
-	},
 ]
 
+var eofolPt=[
+	{
+		'Name' : 'Гм оружейщик',
+		'CoordX' : '208px',
+		'CoordY' : '104px',
+		'Groups' : '[0]',
+	},
+	{
+		'Name' : 'Телепорт в хармондейл',
+		'CoordX' : '147px',
+		'CoordY' : '19px',
+		'Groups' : '[3]',
+	},
+	{
+		'Name' : 'Проход в тоннели Нигона.',
+		'CoordX' : '245px',
+		'CoordY' : '141px',
+		'Groups' : '[3]',
+	},
+	{
+		'Name' : 'Колония зод / COLONY POD',
+		'CoordX' : '11px',
+		'CoordY' : '192px',
+		'Groups' : '[3]',
+	},
+	{
+		'Name' : 'Испытание',
+		'CoordX' : '107px',
+		'CoordY' : '5px',
+		'Groups' : '[2]',
+	},
+	{
+		'Name' : 'Пещера драконов',
+		'CoordX' : '76px',
+		'CoordY' : '34px',
+		'Groups' : '[3]',
+	},
+	{
+		'Name' : 'Пещера драконов2',
+		'CoordX' : '36px',
+		'CoordY' : '21px',
+		'Groups' : '[3]',
+	},
+];
 var nigonPt=[
 	{
 		'Name' : 'Фонтан +50 интеллект и сила духа временно',
@@ -84,7 +128,7 @@ var nigonPt=[
 		'Name' : '+2 силы духа постоянно',
 		'CoordX' : '130px',
 		'CoordY' : '180px',
-		'Groups' : '[4]',
+		'Groups' : '[2]',
 	},
 	{
 		'Name' : 'Гм ловушек',
@@ -188,6 +232,48 @@ var nigonPt=[
 		'CoordY' : '185px',
 		'Groups' : '[2]',
 	},
+	{
+		'Name' : 'Обелиск',
+		'CoordX' : '6px',
+		'CoordY' : '27px',
+		'Groups' : '[3]',
+	},
+	{
+		'Name' : 'Подземелье лабиринт',
+		'CoordX' : '56px',
+		'CoordY' : '0px',
+		'Groups' : '[3]',
+	},
+	{
+		'Name' : 'Стальтовая руда, на вершине горы.',
+		'CoordX' : '89px',
+		'CoordY' : '192px',
+		'Groups' : '[3]',
+	},
+	{
+		'Name' : 'Вход в тоннели Нигона.',
+		'CoordX' : '75px',
+		'CoordY' : '168px',
+		'Groups' : '[3]',
+	},
+	{
+		'Name' : 'Вход в тоннели Нигона.',
+		'CoordX' : '35px',
+		'CoordY' : '102px',
+		'Groups' : '[3]',
+	},
+	{
+		'Name' : 'Вход в тоннели Нигона.',
+		'CoordX' : '158px',
+		'CoordY' : '106px',
+		'Groups' : '[3]',
+	},
+	{
+		'Name' : 'Вход в тоннели Нигона.',
+		'CoordX' : '193.717px',
+		'CoordY' : '188.15px',
+		'Groups' : '[3]',
+	},
 ];
 var evenmornPt=[
 	{
@@ -266,6 +352,12 @@ var evenmornPt=[
 		'Name' : 'Сооружение, типа стоунхендж.',
 		'CoordX' : '40px',
 		'CoordY' : '105px',
+		'Groups' : '[3]',
+	},
+	{
+		'Name' : 'Круг с цветком, разгадка загадки обелисков.',
+		'CoordX' : '108.283px',
+		'CoordY' : '199.283px',
 		'Groups' : '[3]',
 	},
 ];
@@ -399,53 +491,9 @@ var emeraldPt=[
 		'Groups' : '[3]',
 	},
 ];
-var eofolPt=[
-	{
-		'Name' : 'Гм оружейщик',
-		'CoordX' : '208px',
-		'CoordY' : '104px',
-		'Groups' : '[0]',
-	},
-	{
-		'Name' : 'Телепорт в хармондейл',
-		'CoordX' : '147px',
-		'CoordY' : '19px',
-		'Groups' : '[3]',
-	},
-	{
-		'Name' : 'Проход в скале',
-		'CoordX' : '245px',
-		'CoordY' : '141px',
-		'Groups' : '[3]',
-	},
-	{
-		'Name' : 'Колония зод/под',
-		'CoordX' : '11px',
-		'CoordY' : '192px',
-		'Groups' : '[3]',
-	},
-	{
-		'Name' : 'Испытание',
-		'CoordX' : '107px',
-		'CoordY' : '5px',
-		'Groups' : '[2]',
-	},
-	{
-		'Name' : 'Пещера драконов',
-		'CoordX' : '76px',
-		'CoordY' : '34px',
-		'Groups' : '[3]',
-	},
-	{
-		'Name' : 'Пещера драконов2',
-		'CoordX' : '36px',
-		'CoordY' : '21px',
-		'Groups' : '[3]',
-	},
-];
 var landsmm7Pt=[
 	{
-		'Name':'Мастер стрелок',
+		'Name':'Мастер лука',
 		'CoordX':'564px',
 		'CoordY':'607px',
 		'Groups':'[0]',
@@ -490,7 +538,7 @@ var landsmm7Pt=[
 		'Name':'Фонарь света, пропал в курганах',
 		'CoordX':'572px',
 		'CoordY':'593px',
-		'Groups':'[5]',
+		'Groups':'[1]',
 	},
 	{
 		'Name':'Эксперт посоха',
@@ -526,7 +574,7 @@ var landsmm7Pt=[
 		'Name':'Азартный игрок, скрывается в пещере недалеко',
 		'CoordX':'613px',
 		'CoordY':'601px',
-		'Groups':'[5]',
+		'Groups':'[1]',
 	},
 	{
 		'Name':'Эксперт ловкости',
@@ -544,7 +592,7 @@ var landsmm7Pt=[
 		'Name':'Перстень с печатью, бандиты в эрафии',
 		'CoordX':'622px',
 		'CoordY':'576px',
-		'Groups':'[5]',
+		'Groups':'[1]',
 	},
 	{
 		'Name':'Фонтан, меткость +2 постоянно',
@@ -568,7 +616,7 @@ var landsmm7Pt=[
 		'Name':'Членство воды, земли',
 		'CoordX':'591px',
 		'CoordY':'688px',
-		'Groups':'[5]',
+		'Groups':'[2]',
 	},
 	{
 		'Name':'Торговец',
@@ -580,13 +628,13 @@ var landsmm7Pt=[
 		'Name':'Мастер монах',
 		'CoordX':'599px',
 		'CoordY':'689px',
-		'Groups':'[5]',
+		'Groups':'[1]',
 	},
 	{
 		'Name':'Членство мысли',
 		'CoordX':'598px',
 		'CoordY':'687px',
-		'Groups':'[5]',
+		'Groups':'[2]',
 	},
 	{
 		'Name':'Гм меча',
@@ -634,13 +682,13 @@ var landsmm7Pt=[
 		'Name':'Обелиск',
 		'CoordX':'776px',
 		'CoordY':'562px',
-		'Groups':'[5]',
+		'Groups':'[3]',
 	},
 	{
 		'Name':'Продвижение друида',
 		'CoordX':'655px',
 		'CoordY':'428px',
-		'Groups':'[5]',
+		'Groups':'[1]',
 	},
 	{
 		'Name':'Мастер восприятия',
@@ -700,7 +748,7 @@ var landsmm7Pt=[
 		'Name':'Великий друид',
 		'CoordX':'655px',
 		'CoordY':'428px',
-		'Groups':'[5]',
+		'Groups':'[1]',
 	},
 	{
 		'Name':'Эксперт торговли',
@@ -736,7 +784,7 @@ var landsmm7Pt=[
 		'Name':'Король фей в авли',
 		'CoordX':'568px',
 		'CoordY':'432px',
-		'Groups':'[5]',
+		'Groups':'[1]',
 	},
 	{
 		'Name':'Торгаш, скупает перья грифонов.',
@@ -1028,7 +1076,7 @@ var landsmm7Pt=[
 	},
 	{
 		'Name':'Мастер медитации',
-		'CoordX':'477px',
+		'CoordX':'477.333px',
 		'CoordY':'1022px',
 		'Groups':'[0]',
 	},
@@ -1106,8 +1154,8 @@ var landsmm7Pt=[
 	},
 	{
 		'Name':'Пьедестал мужества',
-		'CoordX':'393px',
-		'CoordY':'619px',
+		'CoordX':'393.667px',
+		'CoordY':'621px',
 		'Groups':'[2]',
 	},
 	{
@@ -1124,14 +1172,14 @@ var landsmm7Pt=[
 	},
 	{
 		'Name':'Колодец +10 меткости временно',
-		'CoordX':'509px',
-		'CoordY':'554px',
+		'CoordX':'485.667px',
+		'CoordY':'547.667px',
 		'Groups':'[2]',
 	},
 	{
 		'Name':'Гм ловкости',
-		'CoordX':'504px',
-		'CoordY':'562px',
+		'CoordX':'433.667px',
+		'CoordY':'590.667px',
 		'Groups':'[0]',
 	},
 	{
@@ -1363,7 +1411,7 @@ var landsmm7Pt=[
 		'Groups':'[3]',
 	},
 	{
-		'Name':'Алтарь',
+		'Name':'Алтарь/рака для фигурки ангела.',
 		'CoordX':'267px',
 		'CoordY':'789px',
 		'Groups':'[2]',
@@ -1540,13 +1588,13 @@ var landsmm7Pt=[
 		'Name':'Квестовый алтарь',
 		'CoordX':'667px',
 		'CoordY':'148px',
-		'Groups':'[5]',
+		'Groups':'[2]',
 	},
 	{
 		'Name':'Алтарь для статуэтки воина.',
 		'CoordX':'604px',
 		'CoordY':'150px',
-		'Groups':'[5]',
+		'Groups':'[2]',
 	},
 	{
 		'Name':'Испытание',
@@ -1558,7 +1606,7 @@ var landsmm7Pt=[
 		'Name':'Алтарь для фигурки орла.',
 		'CoordX':'45px',
 		'CoordY':'779.667px',
-		'Groups':'[5]',
+		'Groups':'[2]',
 	},
 	{
 		'Name':'Поместье лорда Мархема',
@@ -1624,19 +1672,19 @@ var landsmm7Pt=[
 		'Name':'Сундук у замка.',
 		'CoordX':'541px',
 		'CoordY':'568px',
-		'Groups':'[5]',
+		'Groups':'[3]',
 	},
 	{
 		'Name':'2 сундука.',
 		'CoordX':'648px',
 		'CoordY':'639px',
-		'Groups':'[5]',
+		'Groups':'[3]',
 	},
 	{
 		'Name':'2 сундука, у обелиска.',
 		'CoordX':'780px',
 		'CoordY':'558px',
-		'Groups':'[5]',
+		'Groups':'[3]',
 	},
 	{
 		'Name':'Оракул',
@@ -1648,7 +1696,7 @@ var landsmm7Pt=[
 		'Name':'сундук.',
 		'CoordX':'764px',
 		'CoordY':'764px',
-		'Groups':'[5]',
+		'Groups':'[3]',
 	},
 	{
 		'Name':'Пьедестал каменной кожи.',
@@ -1666,7 +1714,7 @@ var landsmm7Pt=[
 		'Name':'Торс голема, в сундуке.',
 		'CoordX':'571px',
 		'CoordY':'1004px',
-		'Groups':'[5]',
+		'Groups':'[3]',
 	},
 	{
 		'Name':'Нормальная голова голема и купчая, внизу.',
@@ -1702,6 +1750,12 @@ var landsmm7Pt=[
 		'Name':'Обелиск',
 		'CoordX':'594px',
 		'CoordY':'84px',
-		'Groups':'[5]',
+		'Groups':'[3]',
+	},
+	{
+		'Name':'Рака, сила и выносливость +10 постоянно.',
+		'CoordX':'544px',
+		'CoordY':'1032px',
+		'Groups':'[3]',
 	},
 ];
