@@ -48,6 +48,12 @@ $(document).ready(function() {
 	var directrix=[]; //направляющие линии
 	var tmpDirectrix=null; //направляющая линия временная (для показа во время рисования)
 	var tmpPointsDx={}; //точки для направляющей
+	var dLSelectDefault=0;//какой инструмент выбирать по умолчанию (0 - tmpLine) в режиме рисования
+	var dLSelected=0;//какой инструмент выбирать по умолчанию (0 - tmpLine) в режиме рисования
+	var leaderLineOptions={};//опции для постоянной линии
+	var arrPLines=[];//Массив постоянных линий
+	
+	
 	//загрузка истории
 	//historyName=$('.historyName').text();
 	historyName=$('.gameName').text()+'hist';
@@ -275,6 +281,7 @@ $(document).ready(function() {
 			zoom=Profiles[num].zoom;
 		}
 		mainpic.find('img').attr('src',Profiles[num].File).end().css({'transform':'scale('+zoom+')'});
+		//загрузка массива точек
 		pointsarr=self[Profiles[num].pointarr];
 		//Смена индекса точек
 		if (Profiles[num].StartIndex>0){
@@ -329,6 +336,33 @@ $(document).ready(function() {
 		if (globhist){loadhist();}
 		//Закрыть все группы
 		closeGroups();
+		//загрузка и отрисовка постоянных линий
+		if (Profiles[num]['pLines'] !== undefined){
+			try {
+				tmpResult = JSON.parse(Profiles[num]['pLines']);
+				drawPermanentLines(tmpResult);
+			}
+			catch(e) {
+				console.log('Постоянные линии неверный формат / permanenet lines corrupted'+e);
+			}
+		}
+	};
+	function drawPermanentLines(linesArr){
+		//leaderLineOptions
+		var tmpleaderLineOptions=leaderLineOptions;
+		if (Array.isArray(linesArr)){
+			linesArr.forEach(function(oneLine){
+				if (typeof oneLine === 'object'){
+					//draw oneLine
+					//lineOptionsArr['start']=undefined;
+					//lineOptionsArr['end']=undefined;
+					leaderLineOptions=oneLine;
+					let obj=drawLineEx(oneLine.x1,oneLine.y1,oneLine.x2,oneLine.y2);
+					obj.position();
+				}
+			});
+		}
+		leaderLineOptions=tmpleaderLineOptions;
 	};
 	function addLastCss(selector,propStr){
 		var Helpname='helperStyle';
@@ -567,6 +601,12 @@ $(document).ready(function() {
 	});
 	$('#flylist > .container > h2').dblclick(function(event){
 		var curtext='',alton=0;
+		//profileIndex
+		//добавляем постоянные линии в профиль
+		if (arrPLines.length){
+		Profiles[profileIndex]['pLines']=JSON.stringify(arrPLines);
+		}
+		
 		newGlobhist=[]; //временный массив истории для сортировки
 		if (event.altKey){
 			//сортируем массив ключей профиля в историческом порядке
@@ -618,7 +658,7 @@ $(document).ready(function() {
 			//update history
 			setCookie(historyName,JSON.stringify(newGlobhist),{expires:60*60*24*30,path:'/'})
 		}
-		//Собираем профили
+		//Собираем профили и старые и текущий
 		for (nindex in Profiles) {
 			tmpproftext='';
 			for (prop in Profiles[nindex]) {
@@ -651,7 +691,7 @@ $(document).ready(function() {
 			{
 				profhead+="\n\t"+'{'+"\n"+tmpproftext+'\t},';
 			}
-			//getall old points
+			//getall old points, старые точки
 			ptarr='';
 			if (alton){
 				for (tmppoint in arrsort[nindex]) {
@@ -1065,21 +1105,124 @@ $(document).ready(function() {
 				tmpDirectrix=null;
 				maptarget=$('#mainpic');
 				self[zobj]=1;
+				dLSelected=dLSelectDefault;
+				//выделяем
+				dLSelect(dLSelected);
 				$('.drawingTools').show();
+				//убираем группы
 				$('#flylist .maingroups').toggleClass('hide');
 				//console.log('draw lines on');
 			}
 		}
 	})
-	function drawLineTmp(x1,y1,x2,y2){
-		if (tmpDirectrix!=null && tmpDirectrix){
-			//перерисовываем
-			tmpDirectrix=correctLineStraight(tmpDirectrix,x2,y2);
+	$('.drawingToolsSetup .drawSetItem').on('click',function(e){
+		//left click
+		var el=$(this);
+		var dataKey;
+		var dataVal;
+		if (e.target.tagName!='INPUT' && !e.target.classList.contains('mark')){
+			dataKey=el.data('key');
+			if (dataKey=='middleLabel'){
+			//{color: 'red'})
+				dataVal=el.find('input').val();
+				if (dataVal.length){
+					//leaderLineOptions[dataKey]=dataVal;
+					let labelColor=$('.drawingToolsSetup .mark.labelColor').data('color');
+					leaderLineOptions[dataKey]={text: dataVal, color: labelColor};
+				}
+			}
+			el.find('.setOptions').toggleClass('active');
 		}
-		else
-		{
-			//первый раз рисуем
-			tmpDirectrix=drawLineStraight(x1,y1,x2,y2);
+	});
+	$('.drawingToolsSetup .setOptions .option').on('click',function(e){
+		//left click
+		var el=$(this);
+		var par=el.closest('.setOptions');
+		var dataVal;
+		var dataKey;
+		
+		dataKey=par.data('key');
+		dataVal=el.data('value');
+		if (dataVal=='input'){
+			return;
+		}
+		
+		//переключение активности
+		par.find('.option').removeClass('active');
+		el.addClass('active');
+		par.removeClass('active');
+		
+		e.stopPropagation();
+		
+		//Ставим что должны	
+		
+		if (dataVal.length && dataKey.length){
+			//Значения есть			
+			leaderLineOptions[dataKey]=dataVal;
+		}
+	});
+	$('.drawingTools .groupWpap2cl .drawItem').on('contextmenu',function(e){
+		//contextmenu
+		e.preventDefault();
+		e.stopPropagation();
+		//return false;
+	});
+	$('.drawingTools .groupWpap2cl .drawItem').on('mouseup',function(e){
+		if (e.button==2){
+			//right click
+			e.preventDefault();
+			e.stopPropagation();
+			/*console.log ('button '+e.button);*/
+			$('.drawingToolsSetup').toggleClass('active');
+			//return false;
+		}else{
+			//console.log ('button '+e.button);
+		}
+	});
+	$('.drawingTools .groupWpap2cl .drawItem').on('click',function(){
+		//выбрали инструмент, выделяем, только левый клик
+		dLSelect(null,$(this));
+	});
+	function dLSelect(index=null,drawObj=null){
+		var dTools=$('.drawingTools .groupWpap2cl .drawItem');
+		if (!index && drawObj){
+			index=dTools.index(drawObj);
+			//console.log(index);
+		}
+		dLSelected=index;
+		dTools.removeClass('selected');
+		dTools.eq(index).addClass('selected');
+	}
+	function drawLineTmp(x1,y1,x2,y2){
+		var curscale=Profiles[profileIndex].zoom;
+		
+		switch (dLSelected){
+		case 0:
+		//временная линия
+			if (tmpDirectrix!=null && tmpDirectrix){
+				//перерисовываем
+				tmpDirectrix=correctLineStraight(tmpDirectrix,x2*curscale,y2*curscale);
+			}
+			else
+			{
+				//первый раз рисуем
+				tmpDirectrix=drawLineStraight(x1*curscale,y1*curscale,x2*curscale,y2*curscale);
+			}
+		break;
+		case 1:
+		//постоянная линия
+			if (tmpDirectrix!=null && tmpDirectrix){
+				//перерисовываем
+				tmpDirectrix=correctLineStraight(tmpDirectrix,x2*curscale,y2*curscale);
+				//вот тут корректируем конечные координаты
+				arrPLines[arrPLines.length - 1]['x2']=x2*curscale;arrPLines[arrPLines.length - 1]['y2']=y2*curscale;
+			}
+			else
+			{
+				//первый раз рисуем
+				tmpDirectrix=drawLineEx(x1*curscale,y1*curscale,x2*curscale,y2*curscale);
+			}
+		break;
 		}
 	}
 	function correctLineStraight(obj,x2,y2){
@@ -1108,6 +1251,46 @@ $(document).ready(function() {
 				endPlug:'behind',
 			}
 		)
+	}
+	function drawLineEx(x1,y1,x2,y2){
+		//постоянная линия
+		var mapPic=document.getElementById('mainpic');
+		var elStart={};
+		var elend={};
+		var lineOptions={};
+		var lineOptionsArr={}; // временный массив для запоминания
+
+		//это постоянная линия, записываем координаты во временный массив, а потом в общий массив линий
+		lineOptionsArr['x1']=x1;lineOptionsArr['y1']=y1;
+		lineOptionsArr['x2']=x2;lineOptionsArr['y2']=y2;
+		
+		//начальные координаты
+		elStart=LeaderLine.pointAnchor(mapPic, {x: x1, y: y1});
+		elend=LeaderLine.pointAnchor(mapPic, {x: x2, y: y2});
+
+		//цвет и другие опции
+		lineColor=$('.drawingTools .setColors .back .mark').data('color');
+		lineOptions['start']=elStart;
+		lineOptions['end']=elend;
+		lineOptions['color']=lineColor;
+		
+		//merge опций по умолчанию и тех что уже есть
+		lineOptions={ ...lineOptions, ...leaderLineOptions };
+		
+		//merge опций временного массива и тех что выводятся
+		lineOptionsArr={...lineOptions,...lineOptionsArr};
+		lineOptionsArr['start']=undefined;
+		lineOptionsArr['end']=undefined;
+		
+		//преобазование некоторых опций
+		if (lineOptions['middleLabel']!=undefined){
+			lineOptions['middleLabel']=LeaderLine.captionLabel({text: lineOptions['middleLabel']['text'], color: lineOptions['middleLabel']['color']});
+		}
+		
+		//это постоянная линия, запоминаем её.
+		arrPLines.push(lineOptionsArr);
+
+		return new LeaderLine(lineOptions);
 	}
 	
 	function DeleteRoute(){
@@ -1455,6 +1638,7 @@ $(document).ready(function() {
 	$('body').mouseup(function(event){
 		//console.log('mouseup');
 		var mainpic=$('#mainpic');
+		var curscale=Profiles[profileIndex].zoom;
 		mainpic.removeClass('active');
 		if (event.altKey && mapcircle==1){
 			var oldx,oldy;
@@ -1521,12 +1705,13 @@ $(document).ready(function() {
 				//если только кликаем по изображению а не по меню.
 				if (event.target.tagName=="IMG"){
 					//нужны координаты относительно картинки
+					//var curscale=Profiles[profileIndex].zoom;
 					tmpPointsDx.x1=event.offsetX;
 					tmpPointsDx.y1=event.offsetY;
 				}
 			}
 		}
-		if ((event.ctrlKey && event.shiftKey) && mapposcx && mapposx && !circlept){
+		if ((event.ctrlKey && event.shiftKey) && mapposcx && mapposx && !circlept && maptarget!=null ){
 			//Отмена, возвращаем старые координаты
 			maptarget.css('left',mapposcx+'px');
 			maptarget.css('top',mapposcy+'px');
@@ -1558,6 +1743,8 @@ $(document).ready(function() {
 		var curscale=1;
 		var element = document.querySelector('#mainpic');
 		var scaleX = element.getBoundingClientRect().width / element.offsetWidth;
+		var curscale=Profiles[profileIndex].zoom;
+		
 		if ($(this).hasClass('active') || circlept || Selectpt || drawLines){
 			var mainpic;
 			//если это круг
@@ -1598,7 +1785,7 @@ $(document).ready(function() {
 					maptarget.css('height',cy+'px');
 				}
 			}
-			else if (drawLines){
+			else if (drawLines && event.target.tagName=="IMG"){
 				//это мы в процессе рисования временной линии
 				mainpic=null;
 				//перемещаем точку 2
@@ -1607,8 +1794,8 @@ $(document).ready(function() {
 					var xEnd=event.offsetX;
 					var yEnd=event.offsetY;
 					if (event.shiftKey){
-						var cx=Math.abs(event.offsetX-tmpPointsDx.x1);
-						var cy=Math.abs(event.offsetY-tmpPointsDx.y1);
+						var cx=Math.abs(xEnd-tmpPointsDx.x1);
+						var cy=Math.abs(yEnd-tmpPointsDx.y1);
 						//распрямляем
 						//по идее нам надо вычислить расстояния x2-x1 y2-y1
 						if (cx<=cy){
@@ -1618,7 +1805,6 @@ $(document).ready(function() {
 							yEnd=tmpPointsDx.y1;
 						}
 					}
-					
 					drawLineTmp(tmpPointsDx.x1,tmpPointsDx.y1,xEnd,yEnd);
 				}
 			}
@@ -2193,6 +2379,28 @@ $(document).ready(function() {
 	$('.drawingTools .setColors .mark').on('click',function(){
 		var elmark=$(this);
 		var inputel=elmark.parents('.setColors').find('input[name=setcolors]');
+		inputel.click();
+		inputel.one('change',function(){
+			var elinp=$(this);
+			var color=elinp.val();
+			elmark.data('color',color);
+			elmark.css('background',color);
+		});
+	});
+	/*$('.drawingTools .setColors .mark').on('click',function(){
+		var elmark=$(this);
+		var inputel=elmark.parents('.setColors').find('input[name=setcolors]');
+		inputel.click();
+		inputel.one('change',function(){
+			var elinp=$(this);
+			var color=elinp.val();
+			elmark.data('color',color);
+			elmark.css('background',color);
+		});
+	});*/
+	$('.drawingToolsSetup .setOptions .mark').on('click',function(){
+		var elmark=$(this);
+		var inputel=elmark.parents('.setOptions').find('input.setcolors');
 		inputel.click();
 		inputel.one('change',function(){
 			var elinp=$(this);
