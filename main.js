@@ -1134,6 +1134,37 @@ $(document).ready(function() {
 			el.find('.setOptions').toggleClass('active');
 		}
 	});
+	$('.drawingToolsSetup .drawSetItem .glabel').on('click',function(e){
+		//left click
+		var el=$(this);
+		//var dataKey;
+		el.siblings('input').click();
+	});
+	$('.drawingToolsSetup .drawSetItem.grad input').on('click',function(e){
+		var el=$(this);
+		var parentEl=el.parent();
+		var elInput=parentEl.find('input');
+		var checkStatus=elInput.prop('checked');
+		
+		if (checkStatus){
+			//да
+			let StartColor=$('.drawingTools .setColors .first .mark').data('color');
+			let EndColor=lineColor=$('.drawingTools .setColors .back .mark').data('color');
+			
+			parentEl.addClass('active');
+			
+			parentEl.css('background',EndColor);
+			parentEl.css('background','linear-gradient(90deg, '+StartColor+' 0%, '+EndColor+' 100%)');
+			
+			leaderLineOptions[parentEl.data('key')]=true;
+		}else{
+			parentEl.removeClass('active');
+			parentEl.css('background','inherit');
+			
+			leaderLineOptions[parentEl.data('key')]=false;
+		}
+		
+	});
 	$('.drawingToolsSetup .setOptions .option').on('click',function(e){
 		//left click
 		var el=$(this);
@@ -1286,6 +1317,12 @@ $(document).ready(function() {
 		if (lineOptions['middleLabel']!=undefined){
 			lineOptions['middleLabel']=LeaderLine.captionLabel({text: lineOptions['middleLabel']['text'], color: lineOptions['middleLabel']['color']});
 		}
+		if (lineOptions['gradient']!=undefined && lineOptions['gradient']==1){
+			let StartColor=$('.drawingTools .setColors .first .mark').data('color');
+			lineOptions['startPlugColor']=StartColor;
+			lineOptions['endPlugColor']=lineColor;
+		}
+		
 		
 		//это постоянная линия, запоминаем её.
 		arrPLines.push(lineOptionsArr);
