@@ -1,7 +1,8 @@
 var langStr={
 	HELP:'Help',
 	ACTIONS:'Actions',
-	ACT_KEYMOVE:'Moving with keyboard buttons (k)',
+	ACT_SAVE:'Save modes and positions',
+	ACT_KEYMOVE:'Moving with keyboard buttons',
 	ACT_GLOBALMOVE:'Global move',
 	ACT_GLOBALSIZE:'Global size',
 	ACT_YONGUP:'Young numbers are flowing up.',
@@ -14,6 +15,8 @@ var langStr={
 	FASTACT_NEWPOINT:'New point.',
 	FASTACT_COMPRESS:'Compress points.',
 	FASTACT_IGNORDEL:'Delete ignore list.',
+	FASTACT_FLIPMAPS:'Flip the maps',
+	FASTACT_SHOWDLG:'show routes dialog',
 	MAPS:'Maps',
 	HISTNAME:'History',
 	GROUPS:'Groups',
@@ -24,14 +27,25 @@ var langStr={
 	GROUPCMENU:'Group menu',
 	GROUPCMENU_MOVE:'Move',
 	GROUPCMENU_REMOVE:'Remove',
+	SETUPDLG_TITLE:'Setting up key bindings',
+	SETUPDLG_RESET:'Reset',
+	SETUPDLG_KEYMOVE:'Navigating with keys',	
+	SETUPDLG_GMOVE:'Global move',
+	SETUPDLG_GSIZE:'Global size',
+	SETUPDLG_ROUTESHOW:'Show route',
+	SETUPDLG_DRAWLINES:'Drawing lines',
+	SETUPDLG_DEC:'Decrease',
+	SETUPDLG_INC:'Increase',	
 	CONTMENU:'Point menu',
 	CONTMENU_CHGROUP:'Change group',
 	CONTMENU_DELPOINT:'Remove Item',
 	CONTMENU_ADDIGNORE:'Ignore for routes',
-	LANG:'<img src="https://upload.wikimedia.org/wikipedia/commons/a/a5/Flag_of_the_United_Kingdom_%281-2%29.svg" style="display: inline;height: 1em;">Lang',
+	CONTMENU_ADDCONTINUOUS:'long-lasting',
+	CONTMENU_DRAWTGUIDES:'draw the guides',	
+	LANG:'<img src="https://upload.wikimedia.org/wikipedia/commons/a/a5/Flag_of_the_United_Kingdom_%281-2%29.svg" style="display: inline;height: 1em;padding:2px;">Lang',
 	HELP_TEXT:'<br>-----The operating procedure is approximately as follows (quick start)----------\:<br> \
 	we select the desired map on the right menu, as we progress through the game, we turn off the collected points individually by clicking on it in the map, and our path is remembered in history.<br> \
-	If the map is new, we create it manually and at least one label, then this label can be moved, renamed and multiplied with alt pressed.<br> \
+	If the map is new, we can create it in quick actions menu "create a new map", the first mark will be created, then this mark can be moved, renamed and multiplied with alt pressed.<br> \
 	At the end, double click on the name of the "group", the labels will be copied to the clipboard. Then paste it into settings.js with overwrite.<br> \
 	<br>--------------Short description\:----------------<br> \
 	There is a map in the center, the map can be moved by dragging, on the left are groups menu (it contains elements on the map), on the right we can see profiles menu (different maps).<br> \
@@ -47,14 +61,14 @@ var langStr={
 	Double clicking on any place on the map displays its coordinates in the console and copies them to the clipboard (service).<br> \
 	<br>\
 	In the profiles menu (on the right), when clicked on any map (profile), activates the profile and changes the card corresponding to the profile, also loads history and loads new groups (menu on the left),<br> \
-	when you click on the label \"cards\" the profile menu opens/closes,<br>\
+	when you click with Ctrl pressed on the the label \"cards\" the profile/maps menu opens/closes,<br>\
 	when you click with Ctrl pressed on the “groups” label, the group menu opens/closes.<br> \
 	<br>-----------Details--------<br> \
 	<br>---Group \"History\"\:<br> \
 	History is saved in localStorage<br>\
 	Those elements that were deactivated by clicking on eye near the element (into the group) or by double clicking on the element on the map.<br> \
 	<br>\
-	History elements can activated by clicking on eye near it, can be deleted by clicking on the trash can, and you can also click on the "history" label while pressing alt - the history is cleared.<br> \
+	History items can be activated by clicking the eye next to it, can be deleted by clicking the trash can, and you can also click the "history" label, hold Alt - this turns on the mode of moving history labels, then Alt + Click - cancel, just Click - finish.<br> \
 	<br>\
 	It is now possible to move history entries by pressing shift (shift click turns on the moving mode), and when you hover over any element in history, it will be underlined with a blue line,<br> \
 	indicating the landing location, then the click will fix the new position of the entry in history,<br> \
@@ -84,11 +98,17 @@ var langStr={
 	just click on the group - opens/closes it<br> \
 	<br>---Maps/profiles\:<br> \
 	Shift + click on the map - allows you to rename it.<br> \
+	Alt + Click - turns on the mode of moving maps/profiles, then Alt + Click - cancel, just Click - finish.<br> \
 	<br>---Map\:<br> \
 	Click on an element on the map while holding down the shift key - you can edit the text description. \
 	<br>\
-	If you hold down ctrl and click on map element, item menu appears, you can change his group number<br> \
-	or remove the item itself or add the point to the ignore list<br> \
+	If you hold down ctrl and click on map element, Markers content menu appears<br> \
+	<br>---Markers content menu\:<br> \
+	you can change group number \
+	remove the item itself \
+	add the point to the ignore list<br> \
+	add the point continious effect,  which will allow you to add it to history multiple times and it won\'t close when double-clicked<br> \
+	<br>---Markers content menu\<br> \
 	Markers (elements) on the map can be moved while holding alt - then a copy of the mark is created<br> \
 	Also added a method to cancel dragging if ctrl and shift are pressed.<br> \
 	<br> \
@@ -103,6 +123,9 @@ var langStr={
 	<br>\
 	shift + d - removes selection. \
 	<br>---Actions<br> \
+	The Save modes and position option saves some options (currently, button movement and a younger numbers at the top), but most importantly, saves the map position: \
+	saves on reboot or window closing when the option is enabled, resets when it disabled \
+	<br> \
 	Added a mode for mass dragging marks (elements,points) by pessing g key and resizing by pressing z.<br> \
 	While holding shift - proportional change in the distances between marks (as if you decided to change the scale\
 	maps and the labels need to be harmonize), without the shift key - the width and length are stretched differently, zg keys are no longer used, \
@@ -115,6 +138,8 @@ var langStr={
 	In the action menu, it is now possible to show younger numbers on top of older ones. \
 	<br>\
 	option build a route - builds a route based on points on the map, also writes the last removed point to the beginning \
+	When you first turn it on, it opens a pop-up window where you can either close it or mark the marker as completed (the same as with a double-click) \
+	Also, if you don\'t want to pick up an item now, you can add it to your ignore list (skip it) and pick it up later and continue to follow the current route. \
 	allows you to change the size using the [] keys \
 	<br> \
 	Drawing lines - turns on the line drawing mode, click on the map - first point, then interactively click on the desired location of second point, \
@@ -135,6 +160,8 @@ var langStr={
 	The new action compress - compresses the selected points; if there are none, compresses all points. \
 	<br> \
 	Delete ignore list - deletes the ignore list from storage and memory \
+	<br> \
+	Flip the maps - flips the map/profiles in reverse order, with the current map moving to the top \
 	<br>---Settings settings.js<br> \
 	You can determine the index from which the counting of numbers begins. This is the StartIndex field, it is outdated, but it works, it was needed when history only remembered numbers, regardless of the map.<br>\
 	pointarr - link to an array of elements (points, circles) for a given map (profile)<br> \

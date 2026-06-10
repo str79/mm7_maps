@@ -1,16 +1,15 @@
-//import { myValue } from "./lang/ru/index.js";
-//import { myValue } from "/modules/my-module.js";
-var keymove=0;
+var keymove=0; // перемещение клавишами
 var gmove=0; //global move - перемещение
 var gsize=0; //gloval size - изменения расстояния всех значков
-var invIndex=0;
+var invIndex=0; //более молодые номера сверху
 var drawLines=0; //режим рисования линий
-//var drawLines=0;  //признак что включен режим рисования линий
+var routeShow=0; //показать маршрут
+var actSave=0; //сохранять некоторые режимы и координаты на основной карте.
 /*
 	на будущее
 	&#9203;
 	&#9749;
-	&#9851;
+	---------------&#9851;
 	&#9855;
 	&#9971;
 	&#9999;
@@ -21,6 +20,8 @@ $(document).ready(function() {
 	var maptarget=null;
 	var movehist=0; //режим перемещения элементов истории
 	var moveGroup=0; //режим перемещения групп
+	var moveMaps=0; //режим перемещения карт/профилей
+	var mapMoveNum; //номер перемещаемого элемента карты
 	var mapposx=null,mapposy=null; //старые координаты точки mouse event как на экране
 	var mapposcx=null,mapposcy=null; //старые координаты точки относительно в элементе
 	var circlept=0;  //признак что включен информационный прямоугольник
@@ -30,19 +31,20 @@ $(document).ready(function() {
 	var gTmpArr={}; //старые координаты, при чем множественные, для выделенных точек или для всех точек.
 	var selectedArr=[]; //массив выделенных элементов
 	var historyName; //имя массива истории
-	let profSym='@g='; //символ разделитель между профилем и точкой, для истории
+	var settingsName; //название настроек
+	const profSym='@g='; //символ разделитель между профилем и точкой, для истории
+	const symCont='@%'; //сивол разделитель для номера для длительных точек, не используется
 	var preId='mapoint'; //ид перед названием точки
 	var activeongroups=1; //включать ли категории (в начале и при переключении профилей-карт)
 	var lastId; //последний ид точки-круга (для применения действий над ним)
-	var histMoveNum; //номер перемещаемого элемента
-	var defaultLang='RU' //язык по дефолту.
+	var histMoveNum; //номер перемещаемого элемента в истории
+	var defaultLang='ru' //язык по дефолту.
 	var langScript; //скрипт языка
-	var settingsName; //название настроек
 	var globhist; //массив истории
 	var globSettings; //массив настроек
 	var mapSettings; //скрипт настроек
 	var RouteLines=[]; //стрелки маршрутов, объекты
-	var defRouteCount=3; //Стандартная длина маршрута
+	var defRouteCount=4; //Стандартная длина маршрута
 	var IgnoreName; //Имя игнор листа для маршрутов
 	var globIgnore=[]; //Список точек для игнора при перерисовке маршрута
 	var directrix=[]; //направляющие линии
@@ -52,30 +54,76 @@ $(document).ready(function() {
 	var dLSelected=0;//какой инструмент выбирать по умолчанию (0 - tmpLine) в режиме рисования
 	var leaderLineOptions={};//опции для постоянной линии
 	var arrPLines=[];//Массив постоянных линий
-	
-	
-	//загрузка истории
-	//historyName=$('.historyName').text();
-	historyName=$('.gameName').text()+'hist';
-	settingsName=$('.gameName').text()+'settings';
-	IgnoreName=$('.gameName').text()+'ignore';
-	//Загрузка настроек
-	loadSettings();
-	//Установка настроек
-	setupSettings();
-	//загрузка карт
-	loadMAPSettings(defaultLang).then((result1) => {
-		//console.log(result1);
-		init();
-	})
+	var arrBindLines={};//Массив линий, привязанных к точке
+	var keyBinging=-1;//Включен ли режим отлова клавиш, заодно и индекс клавиши
+	var customKeys={};//Ассоциативный массив настроек ручных назначений кнопок
+	var defaultKeys={
+		"routeShow":82,
+		"drawLines":76,
+		"keymove":75,
+		"gmove":77,
+		"gsize":90,
+		//open bracket	219
+		"drawDec":219,
+		//close bracket	221
+		"drawInc":221,
+		
+	};//Ассоциативный массив стандартных настроек назначений кнопок
+	var usedKeys={};//Ассоциативный массив текущих настроек назначений кнопок
+	var detMob=0;//Мобильное ли устройство
+	var isDragging = false; //события перемещения картинки, для мобильных нажатий, фикс. отмены перетаскивания
+	//var tapCount = 0; //к-во нажатий, имитация dbl click для мобильников
+	//var tapTimer=null; //тоже таймер для dbl click
+	preinit();
+	function preinit(){
+		//определить что мобильный
+		if (detectMob()){
+			detMob=1;
+			console.log('загружен мобильный ');
+			//console.log('загружен мобильный w: '+window.innerWidth+' h: '+window.innerHeight);
+			/*console.log('мобильный w: '+( window.innerWidth <= 800 )+' h: '+( window.innerHeight <= 600 ));
+			console.log('мобильный ob: '+(( window.innerWidth <= 800 )&&( window.innerHeight <= 600 )));*/
+			//скрываем панели для мобильного
+			$('#flylist .maingroups').toggleClass('hide');
+			$('.mainfly').toggleClass('hide');
+			$('body').addClass('mobile');
+			//$('#flyProf .fpCont')
+			}else{
+			/*console.log('загружен мобильный w: '+window.innerWidth+' h: '+window.innerHeight);
+				console.log('мобильный w: '+( window.innerWidth <= 800 )+' h: '+( window.innerHeight <= 600 ));
+			console.log('мобильный ob: '+(( window.innerWidth <= 800 )&&( window.innerHeight <= 600 )));*/
+		}
+		//установка  переменных
+		historyName=$('.gameName').text()+'hist';
+		settingsName=$('.gameName').text()+'settings';
+		IgnoreName=$('.gameName').text()+'ignore';
+		//Установка ссылок для гитхаба
+		setBaseHref();
+		//Загрузка настроек
+		loadSettings();
+		//Установка настроек и копирование во внутренние переменные
+		setupSettings();
+		//внутреняя замена настроек привязки клавишы
+		mergeCustomKeys();
+		//загрузка карт
+		loadMAPSettings(defaultLang).then((result1) => {
+			//console.log(result1);
+			init();
+		})
+		
+	}
 	function init(){
+		//загрузим стандартную группу из настроек
+		setDefaultProfile();
 		//Загрузка истории
 		loadHistory();
 		//загрузка игнор листа
 		loadGlobIgnore();
 		//Выводим группы
-		$('#flyProf .list-group-item').not('.custom').remove();
-		$('#flyProf .mainfly').append(wrapGroups());
+		$('#flyProf .mainfly .list-group-item').not('.custom').remove();
+		$('#flyProf .mainfly').append(wrapGroups(defaultProfile));
+		//Включаем язык в html
+		document.documentElement.lang=defaultLang;
 		//Включаем язык
 		$('.langSelect .list-group-item').each(function(){
 			if (this.innerText.trim()==defaultLang){
@@ -84,14 +132,102 @@ $(document).ready(function() {
 		})
 		//меняем язык
 		langSelect(defaultLang).then((data)=>{
+			//внешняя замена настроек привязки клавиш
+			setupCustomKeys();
 			//console.log(data);
 			//подгружаем профиль
 			profileSelect(defaultProfile);
 		});
 	}
+	function setupCustomKeys(){
+		//обновление отображения
+		//в настройке
+		var strkey;
+		$('#setupDlg .list-group-item').each(function(){
+			var el=$(this);
+			var actionKey=el.data('actionkey');
+			strkey=translateKeyNum(usedKeys[actionKey]);
+			if (strkey){
+				el.find('.textKeyBind').text(strkey);
+			}
+		});
+		//в меню действий
+		var menuaction=$('#flycMenu .list-group-item-text');
+		for(let elKey in usedKeys){
+			let strkey=translateKeyNum(usedKeys[elKey]);
+			if (strkey){
+				let elmenu=menuaction.filter('[data-action='+elKey+']')
+				elmenu.find('.hotkey').text(' ('+strkey+')');
+			}
+		}
+	}
+	function mergeCustomKeys(){
+		//merge опций по умолчанию и тех что уже есть
+		usedKeys={ ...defaultKeys, ...customKeys };
+	}
+	window.addEventListener('beforeunload', (event) => {
+		//срабатывает при закрытии, перезагрузке по f5 и ctrl-f5
+		/*
+			event.preventDefault();
+			event.returnValue = ''; // Стандартный текст для старых браузеров
+			return ''; // Для современных браузеров
+		*/
+		//сохраняем местоположение
+		if (!globSettings['session']){
+			globSettings['session']={};
+		}
+		globSettings['session']['pos']={};
+		globSettings['session']['invIndex']=0;
+		globSettings['session']['keymove']=0;
+		globSettings['session']['actSave']=0;
+		
+		if (actSave){
+			let pointsCur=self['Profiles'][profileIndex].pointarr;
+			globSettings['session']['pos'].pointsCur=getWinPos();
+			globSettings['session']['invIndex']=invIndex;
+			globSettings['session']['keymove']=keymove;
+			globSettings['session']['actSave']=actSave;
+			Profiles[profileIndex]
+		}
+		saveSettings();
+	});	
+	function getWinPos(){
+		var mainpic=$('#mainpic');
+		let output={};
+		output={'left':mainpic.css('left'),'top':mainpic.css('top')};
+		return output;
+	}
+	function setMainPos(){
+		var mainpic=$('#mainpic');
+		if (globSettings['session']){
+			let pointsCur=self['Profiles'][profileIndex].pointarr;
+			
+			if (globSettings['session']['pos'] && globSettings['session']['pos'].pointsCur){
+				mainpic.css('left',globSettings['session']['pos'].pointsCur.left);
+				mainpic.css('top',globSettings['session']['pos'].pointsCur.top);
+				}
+		}
+	}
+	
 	function setupSettings(){
-		if (globSettings['lang']){
+		//установка настроек
+		//язык
+		if ('lang' in globSettings) {
 			defaultLang=globSettings['lang'];
+		}
+		//hotkeys
+		if ('customKeys' in globSettings) {
+			customKeys=globSettings['customKeys'];
+		}
+		//восстанавливаем режимы
+		if (globSettings['session']){
+			actSave=globSettings['session']['actSave'] || 0;
+			if(actSave){
+				invIndex=globSettings['session']['invIndex'];
+				keymove=globSettings['session']['keymove'];			
+				//активируем визуально
+				paintActions(['actSave','invIndex','keymove']);
+			}
 		}
 	}
 	function loadSettings(){
@@ -107,6 +243,11 @@ $(document).ready(function() {
 			console.log('Настроек нет / settings not found');
 			globSettings={};
 		}
+	}
+	
+	function saveSettings(){
+		//обновляем настройки
+		localStorage.setItem(settingsName, encodeURIComponent(JSON.stringify(globSettings)));
 	}
 	function loadHistory(){
 		globhist=getCookie(historyName);
@@ -129,7 +270,7 @@ $(document).ready(function() {
 	}
 	function loadGlobIgnore(){
 		globIgnore=getCookie(IgnoreName);
-		if (globIgnore===null){
+		if (globIgnore===null || globIgnore==undefined){
 			//console.log('Игнор листа нет / ignore list not found');
 			globIgnore=[];
 		}
@@ -140,9 +281,13 @@ $(document).ready(function() {
 			//console.log('данных по игнор листу нет / ignore list corrupted');
 			globIgnore=[];
 		}
+		if (!globIgnore){
+			//console.log('Игнор листа нет или неверный формат/ ignore list not found');
+			globIgnore=[];
+		}
 	}
 	async function loadMAPSettings(langdir){
-		let path='./lang/'+langdir+'/settings.js';
+		let path='./lang/'+langdir.toLowerCase()+'/settings.js';
 		if (typeof(mapSettings)!='undefined'){
 			//уже есть, удаляем
 			mapSettings.remove();
@@ -150,21 +295,26 @@ $(document).ready(function() {
 		//load sctipt
 		mapSettings = document.createElement('script');
 		mapSettings.src = path;
+		document.body.append(mapSettings);	
 		//wait
 		return new Promise((resolve, reject) => {
-			mapSettings.onload = function() {
-				resolve("maps/profiles loaded");
+			
+			mapSettings.onload = () => {
 				if (typeof(Profiles)=='undefined'){
 					//хотя-бы пустой массив
 					Profiles=[];
-				}
-			}		
-			document.body.append(mapSettings);
+				};
+				resolve('Скрипт карт загружен');
+			};
+			mapSettings.onerror = () => {
+				console.log('Ошибка загрузки карт/профилей');
+				reject(new Error('Ошибка загрузки скрипта карт'));
+			}
 		});
 	}
 	function langSelect(langdir){
 		//import
-		let path='./lang/'+langdir+'/index.js';
+		let path='./lang/'+langdir.toLowerCase()+'/index.js';
 		if (typeof(langStr)!='undefined'){
 			//уже есть, удаляем
 			langScript.remove();
@@ -178,22 +328,22 @@ $(document).ready(function() {
 			langScript.onload = function() {
 				resolve("Язык загружен");
 				replaceLangStr(langStr);
-			}		
+			}
 			document.body.append(mapSettings);
 		});
-		
 	}
 	function replaceLangStr(langStr){
 		var lanobj=$(document.body).find('.langCh');
 		var langKey;
 		var oldlangstr;
+		//по каждому элементу
 		lanobj.each(function(){
 			var el=$(this);
 			var langOld=0;
 			var lanOldelem;
 			lanOldelem=$(this).find('.langOld');
 			if (lanOldelem.length>0){
-				//если уже была обработка 
+				//если уже была обработка
 				langOld=1;
 			}
 			if (langOld){
@@ -206,7 +356,7 @@ $(document).ready(function() {
 			if (langKey in langStr){
 				fulllangstr='<span class="langNow">'+langStr[langKey]+'</span>'+'<span class="langOld">'+langKey+'</span>';
 				if (langOld){
-					//если уже была обработка 
+					//если уже была обработка
 					//el.find('.langNow').get(0).outerHTML='';
 					el.find('.langNow').remove();
 					langKey=lanOldelem.get(0).outerHTML;
@@ -266,13 +416,77 @@ $(document).ready(function() {
 			}
 			event.preventDefault();
 		}
+		else if (e.altKey){
+			//включаем и выключаем режим перемещения карт
+			if (!moveMaps){
+				//первый раз
+				mapMoveNum=el.siblings().addBack().index(el);
+			}
+			else{
+				el.removeClass('mapMove');
+			}
+			moveMaps=!moveMaps;
+		}
+		else if (moveMaps){
+			let destNum=el.siblings().addBack().index(el);
+			let isSrcActive=sibs.eq(mapMoveNum).hasClass('active');
+			//выключаем, меняем порядок
+			moveMaps=!moveMaps;
+			el.removeClass('mapMove');
+			//console.log(mapMoveNum+' '+destNum);
+			if (mapMoveNum !=destNum){
+				//в памяти
+				self[Profiles]=moveArrElement(Profiles,mapMoveNum,destNum);
+				//и сменить номер активной карты, если мы перемещали активную карту
+				if (isSrcActive){
+					profileIndex=destNum;
+				}
+				//сейчас нам надо визуально переместить номер
+				$('#flyProf .list-group-item').not('.custom').remove();
+				$('#flyProf .mainfly').append(wrapGroups(profileIndex));
+			}
+		}
 		else{
 			sibs.removeClass('active');
 			el.addClass('active');
 			profileIndex=sibs.index(el);
+			//записываем в память текущий профиль
+			globSettings['currentProfile']=self['Profiles'][profileIndex].pointarr;
+			saveSettings()
+			//записываем в память текущий профиль
 			profileSelect(profileIndex);
+			if (typeof(routeShow)!='undefined' && routeShow){
+				//маршрут включен, выключим
+				let zobj='routeShow';
+				let elRoute=$('[data-action*=routeShow]');
+				if (elRoute.hasClass('active')){
+					elRoute.removeClass('active');
+				}
+				self[zobj]=0;
+				DeleteRoute();
+				//CreateRoute();
+			}
 		}
 	})
+	function moveArrElement(array, fromIndex, toIndex) {
+		const element=array[fromIndex];
+		if (fromIndex==toIndex){
+			return array;
+		}
+		if (fromIndex>toIndex){
+			//снизу вверх
+			//remove mapMoveNum
+			array.splice(fromIndex, 1)[0]; // Удаляем элемент и сохраняем его
+			//add destNum
+			array.splice(toIndex+1, 0, element); // Вставляем элемент в новую позицию
+			}else{
+			//add destNum
+			array.splice(toIndex+1, 0, element); // Вставляем элемент в новую позицию
+			//remove mapMoveNum
+			array.splice(fromIndex, 1)[0]; // Удаляем элемент и сохраняем его
+		}
+		return array;
+	}
 	function profileSelect(num){
 		var mainpic=$('#mainpic');
 		var zoom=1;
@@ -287,15 +501,31 @@ $(document).ready(function() {
 		if (Profiles[num].StartIndex>0){
 			ChangePointIdex(Profiles[num].StartIndex);
 		}
-		mainpic.css('left',Profiles[num].offsetLeft);
-		mainpic.css('top',Profiles[num].offsetTop);
+		if (actSave){
+			setMainPos();
+		}
+		else
+		{
+			mainpic.css('left',Profiles[num].offsetLeft);
+			mainpic.css('top',Profiles[num].offsetTop);
+		}
 		$('.maingroups .list-group-item').remove();
 		//Добавление групп, массив групп
 		var groupscnt=Profiles[num].GpoupList.length;
 		var groupsHtml=$('');
 		for (z=0;z<groupscnt;z++){
 			//сразу имя
-			groupsHtml=groupsHtml.add(wrapMainGroups(Profiles[num].GpoupList[z]));
+			//убираем метки вида {!style=0}
+			let tmpName=Profiles[num].GpoupList[z];
+			if (tmpName.indexOf('{!style=')>=0){
+				let regStyle=/{.*?}/g;
+				tmpName=Profiles[num].GpoupList[z].replaceAll(regStyle,'');
+			}
+			//wrapMainGroups(Profiles[num].GpoupList[z])
+			let tmpGroup=wrapMainGroups(tmpName);
+			//это list-group-item
+			tmpGroup.addClass('ngroup'+z);
+			groupsHtml=groupsHtml.add(tmpGroup);
 		}
 		//и история
 		groupsHtml=groupsHtml.add(wrapMainGroups($('#tmpHistname .langNow').html()).addClass('autohist'));
@@ -306,25 +536,28 @@ $(document).ready(function() {
 			//active all
 			$('.maingroups .list-group-item:not(.autohist) .list-group-item-heading').addClass('active');
 		}
-		//замена точек 
+		//замена старых точек на новые
 		mainpic.find('.mycircle').remove();
 		//заполнение списков и точек
 		fillGroupsList();
 		//Добавляем custom стили для групп точек
-		var groupsall=$('.maingroups .list-group-item:not(.autohist)');
-		var groupscnt=groupsall.length;
 		for (z=0;z<groupscnt;z++){
-			var tmpgroup=groupsall.eq(z);
-			if (tmpgroup.get(0).hasAttribute('custombg')){
-				//добавил правило
-				addLastCss('.cg'+z,'background: '+tmpgroup.attr('custombg'));
-				//очищалка
-				mainpic.find('.cg'+z).addClass('ClearCg');
-			}
-			if (tmpgroup.get(0).hasAttribute('customstyle')){
-				addLastCss('.cg'+z,tmpgroup.attr('customstyle'));
-				//очищалка
-				mainpic.find('.cg'+z).addClass('ClearCg');
+			var tmpgroup=Profiles[num].GpoupList[z]; //groupsall.eq(z);
+			if (tmpgroup.indexOf('{!style=')>=0){
+				//Ищем стиль/правила
+				var StyleName=tmpgroup.slice(tmpgroup.indexOf('{!')+2+6,-1);
+				if (self[StyleName].custombg!=undefined){
+					//добавим правило
+					addLastCss('.cg'+z,'background: '+self[StyleName].custombg);
+					//очищалка от номера/числа
+					mainpic.find('.cg'+z).addClass('ClearCg');
+				}
+				if (self[StyleName].customstyle!=undefined){
+					//добавим правило
+					addLastCss('.cg'+z,self[StyleName].customstyle);
+					//очищалка от номера/числа
+					mainpic.find('.cg'+z).addClass('ClearCg');
+				}
 			}
 		}
 		//Добавляем custom стили для групп точек
@@ -367,14 +600,14 @@ $(document).ready(function() {
 	function addLastCss(selector,propStr){
 		var Helpname='helperStyle';
 		var sheets = document.styleSheets;
-        var styleEl='';
+		var styleEl='';
 		var styleSheet;
 		for( var i in document.styleSheets ){
 			if( sheets[i].title && sheets[i].title.indexOf(Helpname) > -1 ) {
 				styleEl = sheets[i];
 				break;
 			}
-		}		
+		}
 		//mdn
 		if (!styleEl){
 			styleEl = document.createElement('style');
@@ -402,31 +635,65 @@ $(document).ready(function() {
 		}
 	}
 	function UpdateCountGr(group=null){
-		let cnt;
-		let elemText;
-		let preg=/\(\d*\)/;
-		let curElem;
+		var cnt;
+		var elemText;
+		var curElem;
+		var curcnt=0;
+		//cnt - общее
+		//curcnt - текущего профиля
 		if (group!==null){
-			curElem=$('.maingroups .list-group-item').eq(group)
-			cnt=curElem.find('.list-group-item-text.active').length;
-			elemText=curElem.find('.list-group-item-heading .text').html();
-			if (elemText.match(preg)){
-				elemText=elemText.replace(preg,'('+cnt+')');
-			}
-			else
-			{
-				elemText+=' ('+cnt+')';
-			}
-			curElem.find('.list-group-item-heading .text').html(elemText);
+			curElem=$('.maingroups .list-group-item').eq(group);
+			
+			/*сбор данных */
+			curcnt=curElem.find('.list-group-item-text').not('.active').length;
+			cnt=curElem.find('.list-group-item-text').length;
+			/*сбор данных */
+			
+			elemText=' ('+curcnt+'/'+cnt+')';
+			curElem.find('.list-group-item-heading .tail').html('');
+			curElem.find('.list-group-item-heading .tail').html(elemText);
 		}
 		else{
 			//все группы
 			let i=0;
+			let elemTail;
 			$('.maingroups .list-group-item').not('.autohist').each(function(){
 				UpdateCountGr(i);
 				i++;
 			});
+			//также обновляем историю
+			curElem=$('.maingroups .list-group-item.autohist');
+			elemTail=curElem.find('.list-group-item-heading .tail').get(0);
+			
+			/* узнаем к-во*/
+			let mapCnt=0; //всего на карте.
+			//по карте надо обходить все группы
+			//self[Profiles[nindex].pointarr]
+			//так что только собираем по точкам на карте
+			mapCnt=$('#mainpic .mycircle').length;
+			cnt=globhist.length;
+			//сколько вообще можно собрать на картах
+			cntGlob=0;
+			for (nindex in Profiles) {
+				//текущая карта отправляется наверх
+				let curMap=Profiles[nindex];
+				//pointsarr=self[Profiles[num].pointarr];
+				cntGlob+=self[curMap.pointarr].length;
+			}
+			curcnt=0;
+			curcnt=curElem.find('.list-group-item-text').length;
+			/* узнаем к-во*/
+			
+			elemText=document.querySelector('#tmpHistCount').innerHTML; // это уже строка!
+			//добавляем новое значение
+			elemTail.innerHTML=strReplace(elemText, ['#curcnt#', '#mapCnt#','#cnt#','#cntGlob#'], [curcnt, mapCnt, cnt, cntGlob]);
 		}
+	}
+	function strReplace(text, search, replace) {
+		search.forEach((s, i) => {
+			text = text.replace(new RegExp(s, 'g'), replace[i]);
+		});
+		return text;
 	}
 	function ChangePointIdex(StartIndex){
 		if (StartIndex){
@@ -455,7 +722,7 @@ $(document).ready(function() {
 				//Раньше, когда проект создавался, предполагалось что у каждой точки(кнопки может быть несколько групп)
 				for (z=0;z<gcnt;z++){
 					//добавляет точку в список групп
-					placelisttext(group[z],pointsarr[i].Name,numi,activeongroups)
+					placelisttext(group[z],pointsarr[i],numi,activeongroups)
 				}
 			}
 			placebtn(pointsarr[i].CoordX,pointsarr[i].CoordY,numi,pointsarr[i].Name,1-activeongroups,group[0]);
@@ -483,11 +750,13 @@ $(document).ready(function() {
 		return result=TestPtProfile.ptArr.indexOf(findindex);
 	}
 	function loadhist(){
+		//Загружаем историю в группу история на странице
 		var tmplist=$('#tmplist');
 		var tmparr;
 		var tmpcnt=globhist.length;
 		var groupnum;
 		var flylist=$('#flylist .list-group-item .list-group-item-text');
+		let profileCurrent;
 		for (var i=0;i<tmpcnt;i++){
 			var newid=globhist[i];
 			if (newid.indexOf(profSym)){
@@ -502,34 +771,30 @@ $(document).ready(function() {
 						profileCurrent=null;
 					}
 				}
-				else
-				{
-					//старая версия, оставлено для совместимости
-					profileCurrent=tmparr[1];
-				}
 			}
 			else{
 				profileCurrent=null;
 			}
-			//Если профиль не найден или не указан, пропускаем			
-			//Если профиль записи не равен профилю текущей карты, пропускаем
+			//Если профиль не найден или не указан или не равен профилю текущей карты, пропускаем
 			if (profileCurrent==null || profileCurrent!=profileIndex){continue;}
-			//globhist.push(dataid+profSym+groupnum);
 			var newel=tmplist.html();
 			//у нас есть id - берем с маркеров на карте описания
-			newel = $($.parseHTML( jQuery.trim(newel.replace(/#text#/gi, $('#'+newid).attr('title')+' ('+newid.replace(preId,'')+')'))));
+			let newText=$('#'+newid).attr('title');
+			let realid=$('#'+newid).data('id');
+			newel = $($.parseHTML( jQuery.trim(newel.replace(/#text#/gi, newText+' ('+newid.replace(preId,'')+')'))));
 			//отключаем кнопки - по умолчанию
 			$('#'+newid).addClass('hide');
 			newel.data('id',newid);
+			newel.data('histId',i);
+			newel.data('continuous',(pointsarr[realid-1].continuous??false));
 			if (typeof(profileCurrent)!='undefined'){
 				newel.data('prof',self['Profiles'][profileCurrent].pointarr);
 			}
 			if (groupnum){newel.data('group',groupnum);}
-			newel.append($('<span class="icondel"></span>'));
-			//$('#flylist .autohist').append(newel);
+			newel.append($('<span class="icondel"></span>'));			
 			$('#flylist .autohist').find('.list-group-item-heading').after(newel);
 			//unclick btn
-			//дабл клик по кругу - ищем его id в списке и тыкаем по иконке.
+			//дабл клик по кругу - ищем его id в списке и тыкаем по иконке, нет просто отключаем активность данного текста
 			flylist.each(function(){
 				if ($(this).data('id')==newid){
 					//нашли
@@ -542,17 +807,19 @@ $(document).ready(function() {
 			UpdateCountGr(groupnum);
 		}
 	}
-	function placelisttext(groupnum,text,numpoint,setActive=0,setHide=0){
-		var flylist=$('#flylist');
-		var tmplist=$('#tmplist');
-		var newel=tmplist.html();
-		newel = $.parseHTML( jQuery.trim(newel.replace(/#text#/gi, text+' ('+numpoint+')')));
+	function placelisttext(groupnum,objElement,numpoint,setActive=0,setHide=0){
+		//let newElement={'Name':desc,'CoordX':coordX+'px','CoordY':coordY+'px','Groups':'['+group+']'};
+		let flylist=$('#flylist');
+		let tmplist=$('#tmplist');
+		let newel=tmplist.html();
+		newel = $.parseHTML( jQuery.trim(newel.replace(/#text#/gi, objElement['Name']+' ('+numpoint+')')));
 		newel=$(newel);
 		newel.data('id',preId+numpoint);
 		newel.data('group',groupnum);
+		newel.data('continuous',(objElement['continuous']??''));
 		if (setActive){newel.addClass('active');}
 		if (setHide){newel.addClass('hide');}
-		var groupsfly=flylist.find('.list-group-item').eq(groupnum);
+		let groupsfly=flylist.find('.list-group-item').eq(groupnum);
 		groupsfly.append(newel);
 	}
 	function placebtn(x,y,num,tname,thide=1,onegroup,bonusClass=''){
@@ -563,6 +830,7 @@ $(document).ready(function() {
 		newel = $.parseHTML( jQuery.trim(newel.replace(/#number#/gi, num)));
 		newel=$(newel);
 		newel.css({'left':x,'top':y});
+		newel.data('id',num);
 		newel.attr('id',  preId+num );
 		newel.attr('title',  tname );
 		newel.addClass('cg'+onegroup);
@@ -575,14 +843,31 @@ $(document).ready(function() {
 		}
 		mainpic.append(newel);
 	}
-	$('#flyProf .container > h2').on('click',function(event){
-		$('.mainfly').toggleClass('hide');
-	});
 	function addslashes( str ) {
-		return (str + '').replace(/[\\"']/g, '\\$&').replace(/\u0000/g, '\\0');
+		var slash='\\';
+		//return (str + '').replace(/[\\"']/g, '\\$&').replace(/\u0000/g, '\\0');
+		//return str.replace('/(["\'\])/g', "\\$1").replace('/\0/g', "\\0");
+		//return str.replace(/(["'\/])/g, slash.charAt(0)+"$1");
+		//проблема только при переводе
+		//str=str.replace(/\/'/g, slash+"$1");
+		return str.replace(/\\'/g, "'").replace(/(')/g, slash+"$1");
+		//.replace(/[']/g, slash);
+		//return str.replace(/[']/g, slash);
 	}
+	$('#flyProf .fpCont').on('click',function(event){
+		//у мобильных будет без ctrl
+		if (event.ctrlKey|| detMob){
+			$('.mainfly').toggleClass('hide');
+		}
+	});
+	$('#flylist > .container > h2').on('click',function(event){
+		//у мобильных будет без ctrl
+		if (event.ctrlKey || detMob){
+			$(this).siblings('.maingroups').toggleClass('hide');
+		}
+	});
 	function drawpoint(tmppoint,ptarr,nindex){
-		//для вывода в файл settings, формирует массив точек
+		//для вывода в файл settings, формирует массив точек старой карты
 		ptprops='';
 		for (prop in self[Profiles[nindex].pointarr][tmppoint]) {
 			if (prop=='PointIndex'){continue;}
@@ -590,24 +875,71 @@ $(document).ready(function() {
 				self[Profiles[nindex].pointarr][tmppoint][prop]=addslashes(self[Profiles[nindex].pointarr][tmppoint][prop]);
 			}
 			ptprops+='\t\t';
-			ptprops+='\''+prop+'\' : \''+self[Profiles[nindex].pointarr][tmppoint][prop]+'\','+"\n";
+			if (prop=='Name'){
+				ptprops+='"'+prop+'" : "'+self[Profiles[nindex].pointarr][tmppoint][prop]+'",'+"\n";
+			}
+			else
+			{
+				ptprops+='\''+prop+'\' : \''+self[Profiles[nindex].pointarr][tmppoint][prop]+'\','+"\n";
+			}
 		}
 		return '\t{'+"\n"+ptprops+'\t},'+"\n";
 	}
-	$('#flylist > .container > h2').on('click',function(event){
-		if (event.ctrlKey){
-			$(this).siblings('.maingroups').toggleClass('hide');
+	function drawpointCur(tmppoint,nindex,el){
+		//для вывода в файл settings, формирует массив точек текущей карты
+		//group=el.data('group');
+		let elemmap=$(el);
+		ptprops='';
+		for (prop in self[Profiles[nindex].pointarr][tmppoint]) {
+			if (prop=='PointIndex'){continue;}
+			if (prop=='Name'){
+				self[Profiles[nindex].pointarr][tmppoint][prop]=addslashes(elemmap.attr('title'));
+			}
+			if (prop=='CoordX'){
+				self[Profiles[nindex].pointarr][tmppoint][prop]=elemmap.css('left');
+			}
+			if (prop=='CoordY'){
+				self[Profiles[nindex].pointarr][tmppoint][prop]=elemmap.css('top');
+			}
+			/*if (prop=='Groups'){
+				self[Profiles[nindex].pointarr][tmppoint][prop]=pointsarr[tmppoint].Groups;
+			}*/
+			ptprops+='\t\t';
+			if (prop=='Name'){
+				ptprops+='"'+prop+'" : "'+self[Profiles[nindex].pointarr][tmppoint][prop]+'",'+"\n";
+			}
+			else
+			{
+				ptprops+='\''+prop+'\' : \''+self[Profiles[nindex].pointarr][tmppoint][prop]+'\','+"\n";
+			}
 		}
-	});
+		return '\t{'+"\n"+ptprops+'\t},'+"\n";
+	}
+	/*function drawpointCur(el,group){
+		//для вывода в файл settings, формирует массив точек текущей карты
+		var elemmap=$(el);
+		var curbtn='';
+		if (typeof(group)=='undefined' || group=='undefined'){
+		group=el.data('group');
+		}
+		curbtn+="\t"+'{'+"\n";
+		curbtn+="\t\t"+"'Name':'"+addslashes(elemmap.attr('title'))+"',"+"\n";
+		curbtn+="\t\t"+"'CoordX':'"+elemmap.css('left')+"',"+"\n";
+		curbtn+="\t\t"+"'CoordY':'"+elemmap.css('top')+"',"+"\n";
+		curbtn+="\t\t"+"'Groups':'"+"["+group+"]',"+"\n";
+		curbtn+="\t"+'},'+"\n";
+		return curbtn;
+	}*/
 	$('#flylist > .container > h2').dblclick(function(event){
 		var curtext='',alton=0;
-		//profileIndex
+		var customStyles=[];
+		var elh2=$(this);
+		let newGlobhist=[]; //временный массив истории для сортировки
+		
 		//добавляем постоянные линии в профиль
 		if (arrPLines.length){
-		Profiles[profileIndex]['pLines']=JSON.stringify(arrPLines);
+			Profiles[profileIndex]['pLines']=JSON.stringify(arrPLines);
 		}
-		
-		newGlobhist=[]; //временный массив истории для сортировки
 		if (event.altKey){
 			//сортируем массив ключей профиля в историческом порядке
 			alton=1;
@@ -631,7 +963,6 @@ $(document).ready(function() {
 			//сортируем массив ключей профиля в историческом порядке
 			var arrsort=[];
 			for (nindex in Profiles) {
-				//Profiles[nindex].pointarr
 				tmpsort=Object.keys(self[Profiles[nindex].pointarr]);
 				//дополняем
 				for (tmppoint in tmpsort) {
@@ -639,19 +970,29 @@ $(document).ready(function() {
 				}
 				//сортируем индексы
 				//инвертируем в случае отсутствия значения в истории - те, которых нет в истории сдвинутся вперед
+				//если и будут дубли в истории то их номер будет согласно первому вхождению индекса в истории
+				//2-3, -(-1-3)=4,-(2--3)=5,-(-1--1)=0, числа положительные, значит большие и пойдут в конец массива
 				tmpsort.sort((a, b) => ((globhist.indexOf(a)<0 || globhist.indexOf(b)<0)?-(globhist.indexOf(a) - globhist.indexOf(b)):(globhist.indexOf(a) - globhist.indexOf(b))));
 				//Переделываем историю
-				for (tmppoint in tmpsort) {
+				/*for (tmppoint in tmpsort) {
+					//а тут дубли нежелательны т.к. сбросит всю историю, это единственный косяк
 					tmppos=globhist.indexOf(tmpsort[tmppoint]);
 					if (tmppos>=0){
-						newGlobhist[tmppos]=preId+(Number(tmppoint)+Profiles[nindex].StartIndex)+profSym+Profiles[nindex].pointarr;
-					}					
+					//А тут история перестраивается обратно
+					newGlobhist[tmppos]=preId+(Number(tmppoint)+Profiles[nindex].StartIndex)+profSym+Profiles[nindex].pointarr;
+					}
+				}*/
+				for (tmppoint in globhist) {
+					const oldVal = globhist[tmppoint];
+					const newIndex = tmpsort.indexOf(oldVal); // Ищем позицию в новом порядке
+					const newValus=preId+(newIndex+Profiles[nindex].StartIndex)+profSym+Profiles[nindex].pointarr;
+					newGlobhist.push(newValus); // Сохраняем индекс
 				}
 				//удаляем дополнения
 				for (tmppoint in tmpsort) {
 					tmpsort[tmppoint]=(Number(tmpsort[tmppoint].split(profSym)[0].replace(preId,''))-Profiles[nindex].StartIndex);
 				}
-				//tmparr=newid.split(profSym);
+				//arrsort - массив по номеру профиля уже отсортированных точек 
 				arrsort[nindex]=tmpsort;
 			}
 			//на выходе получаем массив нужного профиля с индексами в нужном порядке
@@ -662,8 +1003,8 @@ $(document).ready(function() {
 		for (nindex in Profiles) {
 			tmpproftext='';
 			for (prop in Profiles[nindex]) {
-				tmpval=Profiles[nindex][prop];
-				origTmpVal=Profiles[nindex][prop];
+				let tmpval=Profiles[nindex][prop];
+				let origTmpVal=Profiles[nindex][prop]; //const
 				if (typeof(tmpval)=='undefined'){
 					//хотя-бы пустой массив
 					tmpval='';
@@ -673,7 +1014,18 @@ $(document).ready(function() {
 					//GpoupList
 					tmpproftext+='\t\t';
 					tmpproftext+="'"+prop+"':"+JSON.stringify(origTmpVal).replaceAll('"','\'')+","+"\n";
-					}else if (isNaN(tmpval)){
+					if (prop=='GpoupList'){
+						//origTmpVal - массив, перебор origTmpVal
+						origTmpVal.forEach(function(item, i, arr) {
+							//alert( i + ": " + item + " (массив:" + arr + ")" );
+							if (item.indexOf('{!style=')>=0){
+								var StyleName=item.slice(item.indexOf('{!')+2+6,-1);
+								customStyles.push(StyleName);
+							}
+						});
+					}
+				}
+				else if (isNaN(tmpval)){
 					tmpproftext+='\t\t';
 					tmpproftext+="'"+prop+"':'"+tmpval+"',"+"\n";
 				}
@@ -709,31 +1061,19 @@ $(document).ready(function() {
 		//Текущий профиль, точки
 		var curbtn='';
 		flylist=$('#mainpic .mycircle');
-		function drawpointCur(el,group){
-			var elemmap=$(el);
-			var curbtn='';
-			if (typeof(group)=='undefined' || group=='undefined'){
-				group=el.data('group');
-			}
-			curbtn+="\t"+'{'+"\n";
-			curbtn+="\t\t"+"'Name':'"+addslashes(elemmap.attr('title'))+"',"+"\n";
-			curbtn+="\t\t"+"'CoordX':'"+elemmap.css('left')+"',"+"\n";
-			curbtn+="\t\t"+"'CoordY':'"+elemmap.css('top')+"',"+"\n";
-			curbtn+="\t\t"+"'Groups':'"+"["+group+"]',"+"\n";
-			curbtn+="\t"+'},'+"\n";
-			return curbtn;
-		}
 		//собираем точки
 		if (alton){
 			for (tmppoint in arrsort[profileIndex]) {
 				el=flylist.filter('#'+preId+(Profiles[profileIndex].StartIndex+arrsort[profileIndex][tmppoint]));
-				curbtn+=drawpointCur(el,arrgroup[el.attr('id')]);
+				curbtn+=drawpointCur(arrsort[profileIndex][tmppoint],profileIndex,el);
 			}
 		}else
 		{
+			//потом переделать на поиск по pointarr, когда туда будут заноситься новые точки
 			flylist.each(function(){
 				el=$(this);
-				curbtn+=drawpointCur(el,arrgroup[el.attr('id')]);
+				ptIndex=el.data('id')-1;
+				curbtn+=drawpointCur(ptIndex,profileIndex,el);
 			});
 		}
 		//no data
@@ -748,24 +1088,129 @@ $(document).ready(function() {
 		}
 		//Точки текущей карты помещаются в конец
 		curtext+=tmpprof[profileIndex];
+		//добавляем стили если они есть
+		if (customStyles.length){
+			//обрезаем стили
+			customStyles=Array.from(new Set(customStyles));
+			let tmpStylecnt=customStyles.length
+			for (let z=0;z<tmpStylecnt;z++){
+				//curtext+=self[customStyles[z]];
+				let bodytmp=JSON.stringify(self[customStyles[z]],null,"\t").replaceAll('"','\'')+"\n";
+				curtext+='var '+customStyles[z]+' = '+bodytmp;
+			}
+		}
+		//добавляем стили если они есть
 		//console.log(curtext);
 		navigator.clipboard.writeText(curtext).then(response => {
 			console.log('ok');
+			elh2.addClass('tmpSelect');
+			setTimeout(() => elh2.removeClass('tmpSelect'),1000);
 		}
 		).catch(e => {
 			console.log(e);
+			lastClip=curtext;
 		});
 		return false;
 	});
-	$(document).on('keydown',function(event){
+	$('body').add('#mainpic').on('keydown',function(event){
+		//The event.which property has been deprecated. Use event.key wherever possible.
 		//if you're using jQuery, you can reliably use which as jQuery
 		//var x = event.which || event.keyCode;
+		//var key = event.which || event.keyCode;
+		var key = event.keyCode;
+		var el=$(event.target);
+		if (key>15 && key<19){
+			return;
+		}
+		//Настройка кнопок управления
+		if (keyBinging>=0){
+			var allSibs=$('#setupDlg .list-group-item');
+			console.log(key);
+			var keyStr=translateKeyNum(key);
+			var actionKey=allSibs.eq(keyBinging).data('actionkey');
+			if (keyStr!='' && actionKey){
+				allSibs.eq(keyBinging).removeClass('active').find('.textKeyBind').html(keyStr);
+				//сохраняем эту клавишу в настройках
+				customKeys[actionKey]=key;
+				keyBinging=-1;
+				//обновляем внутренние настройки клавиш
+				mergeCustomKeys();
+				//обновляем настройки
+				globSettings['customKeys']=customKeys;
+				saveSettings();
+				//обновляем вид диалогов настройки клавиш
+				setupCustomKeys();
+				event.preventDefault();
+				return;
+			}
+		}
+		//и не поиск
+		if ($(event.target).hasClass('searchInput')){
+			return;
+		}
+		if (typeof(routeShow)!='undefined' && routeShow){
+			let changes=0;
+			
+			//роуты не только включены, но и есть диалог
+			let objPopupTitle=document.querySelector('.popupTitle');
+			if (objPopupTitle!=null){
+				//тут пропуск диалога, универсальный ответ да
+				if (key === 32) {
+					//пробел
+					popupDone(objPopupTitle);
+				}
+			}
+			if (key==usedKeys['drawDec']){
+				//open bracket	219	[
+				if (defRouteCount>3){
+					defRouteCount-=1;
+					changes=1;
+				}
+			}
+			if (key==usedKeys['drawInc']){	
+				//close bracket	221	]
+				let maxCnt=$('#mainpic .mycircle').length;
+				if (defRouteCount<maxCnt){
+					defRouteCount+=1;
+					changes=1;
+				}
+			}
+			if (changes){
+				event.preventDefault();
+				DeleteRoute();
+				CreateRoute();
+				return;
+			}
+			//если не было изменений, то проверка продолжается
+		}
+		if (circlept){
+			//console.log(event.keyCode);
+			//[] - увеличивает/уменьшает всё, тут только полотно в инфо прямоугольнике.
+			//if (event.keyCode==219 || event.keyCode==91 || event.keyCode==1093){
+			if (key==usedKeys['drawDec']){	
+				//minus
+				//console.log('minus');
+				if (maptarget){
+					maptarget.width(parseInt(maptarget.width())-10);
+					maptarget.height(parseInt(maptarget.height())-10);
+				}
+			}
+			else if (key==usedKeys['drawInc']){	
+				//plus
+				//console.log('plus');
+				if (maptarget){
+					maptarget.width(parseInt(maptarget.width())+10);
+					maptarget.height(parseInt(maptarget.height())+10);
+				}
+			}
+		}
+		
 		if (typeof(keymove)!='undefined' && keymove && typeof(lastId)!='undefined'){
 			var obj=$('#'+lastId);
 			var objleft=parseInt(obj.css('left'));
 			var objtop=parseInt(obj.css('top'));
 			//console.log(event.which);
-			switch(event.which){
+			switch(key){
 				case 37:
 				//left
 				obj.css('left',(objleft-1)+'px');
@@ -783,81 +1228,42 @@ $(document).ready(function() {
 				obj.css('top',(objtop+1)+'px');
 				break;
 			}
+			refreshTGuides(obj);
 		}
-		
-	})
-	$('body').keypress(function(event){
+		if (key==usedKeys['keymove']){
+			//keymove (k)
+			keymove=1-keymove;
+			$('#flycMenu .list-group-item-text[data-action="keymove"]').toggleClass('active');
+			event.preventDefault();
+		}
+		if (key==usedKeys['drawLines']){
+			//drawLines (l)
+			(drawLines)?drawLinesOff():drawLinesOn()
+			drawLines=1-drawLines;
+			$('#flycMenu .list-group-item-text[data-action="drawLines"]').toggleClass('active');
+			event.preventDefault();
+		}
+		if ((key==usedKeys['routeShow'])  ){
+			//routeShow (r)
+			console.log('routeshow');
+			(routeShow)?DeleteRoute():CreateRoute(1)
+			routeShow=1-routeShow;
+			$('#flycMenu .list-group-item-text[data-action="routeShow"]').toggleClass('active');
+			event.preventDefault();
+			return;
+		}
 		if (event.shiftKey && event.keyCode==68){
-			//отменяем выделение
+			//отменяем выделение, шифт d
 			if (selectedArr.length){
 				$(selectedArr).removeClass('ptSelect');
 				selectedArr=[];
 			}
 			event.preventDefault();
-		}
-		if (typeof(routeShow)!='undefined' && routeShow){
-			var changes=0;
-			if (event.keyCode==91 || event.keyCode==1093){
-				//minus [
-				if (defRouteCount>2){
-					defRouteCount-=1;
-					changes=1;
-				}
-			}
-			else if (event.keyCode==93 || event.keyCode==1098){
-				//plus ]
-				var maxCnt=$('#mainpic .mycircle').length;
-				if (defRouteCount<maxCnt){
-					defRouteCount+=1;
-					changes=1;
-				}
-			}
-			if (changes){
-				console.log('prevent');
-				event.preventDefault();
-				DeleteRoute();
-				CreateRoute();
-			}
-		}
-		else if (circlept){
-			//console.log(event.keyCode);
-			if (event.keyCode==91 || event.keyCode==1093){
-				//minus
-				//console.log('minus');
-				if (maptarget){
-					maptarget.width(parseInt(maptarget.width())-10);
-					maptarget.height(parseInt(maptarget.height())-10);
-				}
-			}
-			else if (event.keyCode==93 || event.keyCode==1098){
-				//plus
-				//console.log('plus');
-				if (maptarget){
-					maptarget.width(parseInt(maptarget.width())+10);
-					maptarget.height(parseInt(maptarget.height())+10);
-				}
-			}
-		}
-		else if ($(event.target).hasClass('searchInput')){
-			//console.log('search');
-		}
-		else{
-			if (event.keyCode==107){
-				//keymove (k)
-				keymove=1-keymove;
-				$('#flycMenu .list-group-item-text[data-action="keymove"]').toggleClass('active');
-			}
-			console.log(event.keyCode);
-		}
+			return;
+		}		
 	})
-	$('#flyProf').on('click','.menuaction',function(event){
-		$('#flycMenu').toggleClass('hide').css({'left':$('body').width()-$('#flycMenu').width()-parseInt($('.container').css('padding-right'))-$('.mainfly').width(),'top':$(this).offset().top});
-		$('#flycMenu').on('click',function(){$(this).addClass('hide')});
-	});
-	$('#flyProf').on('click','.oneaction',function(event){
-		$('#flyaoMenu').toggleClass('hide').css({'left':$('body').width()-$('#flyaoMenu').width()-parseInt($('.container').css('padding-right'))-$('.mainfly').width(),'top':$(this).offset().top});
-		$('#flyaoMenu').on('click',function(){$(this).addClass('hide')});
-	});
+	//событие устарело и желательно его избегать.
+	//$('body').add('#mainpic').keypress(function(event){})
 	$('#flyaoMenu .list-group-item .savemap').on('click',(event)=>{
 		var el=$(event.target);
 		if (!el.hasClass('active')){
@@ -880,7 +1286,6 @@ $(document).ready(function() {
 		var newIndex=Profiles.length;
 		var defGroup=['test group'];
 		//история
-		
 		if (pName!==false && pFile!==false &&
 			!pName.match(/^[^А-я\w\d\s_-]*$/) &&
 			!pFile.match(/^[^\w\d\s_-]*$/)
@@ -934,11 +1339,15 @@ $(document).ready(function() {
 		var coordX=(mainpic.width()-20)/2;
 		//var coordX=(mainpic.width()*(curscale))/2-(20/2);
 		var coordY=(mainpic.height()-20)/2;
-		//var coordY=(mainpic.height()*(curscale))/2-(20/2);	
+		//var coordY=(mainpic.height()*(curscale))/2-(20/2);
 		//в памяти
+		//pointsarr
 		if (desc && group){
-			self[Profiles[profileIndex].pointarr].push({'Name':desc,'CoordX':coordX+'px','CoordY':coordY+'px','Groups':'['+group+']'});
-			pointsarr.push({'Name':desc,'CoordX':coordX+'px','CoordY':coordY+'px','Groups':'['+group+']'});
+			let newElement={'Name':desc,'CoordX':coordX+'px','CoordY':coordY+'px','Groups':'['+group+']'};
+			self[Profiles[profileIndex].pointarr].push(newElement);
+			//уже добавилось
+			//pointsarr.push({'Name':desc,'CoordX':coordX+'px','CoordY':coordY+'px','Groups':'['+group+']'});
+			//$('#mainpic').find('#'+preId+numi)
 			//перезагрузим грузим профиль ? profileSelect(profileIndex)
 			//Новый номер
 			var numi=mainpic.find('.mycircle').length;
@@ -947,19 +1356,20 @@ $(document).ready(function() {
 				numi+=Profiles[profileIndex].StartIndex;
 			}
 			//в списке
-			placelisttext(group,desc,numi,1,1);
+			placelisttext(group,newElement,numi,1,1);
 			UpdateCountGr(group);
 			//на карте
 			var bonusClass='';
 			//Добавляем очищалку стиля для групп точек
-			var tmpgroup=$('.maingroups .list-group-item:not(.autohist)').eq(group);
-			if (tmpgroup.get(0).hasAttribute('custombg') || tmpgroup.get(0).hasAttribute('customstyle')){
-				//очищалка
-				//mainpic.find('.cg'+z).addClass('ClearCg');
+			//var tmpgroup=$('.maingroups .list-group-item:not(.autohist)').eq(group);
+			var tmpgroup=Profiles[profileIndex].GpoupList[group];
+			//если группа с кастом стилем.
+			if (tmpgroup.indexOf('{!style=')>=0){
 				bonusClass='ClearCg';
 			}
 			//Новая кнопка
 			placebtn(coordX,coordY,numi,desc,0,group,bonusClass);
+			//newpoint
 		}
 	});
 	$('#flyaoMenu .list-group-item .newgroup').on('click',(event)=>{
@@ -978,7 +1388,7 @@ $(document).ready(function() {
 				profileSelect(profileIndex);
 			}
 		}
-	});	
+	});
 	$('#flyaoMenu .list-group-item .ignordel').on('click',(event)=>{
 		//Удаляем игнор лист
 		globIgnore=[];
@@ -991,44 +1401,93 @@ $(document).ready(function() {
 			CreateRoute();
 		}
 		event.preventDefault();
-	});	
+	});
+	$('#flyaoMenu .list-group-item .showRdlg').on('click',function(e){
+		//быстрые действия: показ диалога 
+		//Получаем новый маршрут
+		if (routeShow){
+			let routes=GetCurRoute();
+			let firstId;
+			if (routes.options.firstHist){
+				firstId=routes.curRoute.eq(1);
+			}
+			else{
+				firstId=routes.curRoute.eq(0);
+			}
+			showWndDesc(firstId[0].title,firstId[0]);
+		}
+	});		
+	$('#flyaoMenu .list-group-item .flipmaps').on('click',(event)=>{
+		//переворачиваем карты
+		//+Внешне надо только их перевернуть
+		//+В памяти их надо тоже перевернуть
+		//+меняем номер загруженной карты
+		//+в историю - не лезем, там нет номеров карт
+		//переворачиваем в памяти
+		newProfArr=[];
+		curMap={};
+		for (nindex in Profiles) {
+			//текущая карта отправляется наверх
+			curMap=Profiles[nindex];
+			if  (nindex!=profileIndex){
+				newProfArr.unshift(curMap);
+			}
+		}
+		newProfArr.unshift(Profiles[profileIndex]);
+		Profiles=newProfArr;
+		//теперь внешне меняем
+		$('#flyProf .list-group-item').not('.custom').remove();
+		$('#flyProf .mainfly').append(wrapGroups());
+		//текущая группа теперь в начале.
+		profileIndex=0;
+		event.preventDefault();
+	});
 	$('#flyaoMenu .list-group-item .compress').on('click',(event)=>{
 		//Сжать
 		//var el=$(event.target);
 		var newrect={'left':999999,'top':999999,'right':0,'bottom':0};
-		var tmpel={};
-		var newpoint={'x':0,'y':0};
+		var tmpel={}; //временный массив
+		var newpoint={'x':0,'y':0}; //конечные координаты
 		var compressArr;
+		var mapPic=document.getElementById('mainpic');
 		if (selectedArr.length){
 			compressArr=selectedArr;
 		}
 		else{
 			compressArr=$('#mainpic .mycircle').not('.hide');
 		}
-		$(compressArr).each(function(){
+		//вычисляем среднюю точку
+		/*$(compressArr).each(function(){
 			//tmpel=$(this).offset();
 			tmpel.left=parseInt($(this).css('left'))
 			tmpel.top=parseInt($(this).css('top'))
 			if (newrect.left >= tmpel.left){
-				newrect.left = tmpel.left;
+			newrect.left = tmpel.left;
 			}
 			if (newrect.top >= tmpel.top){
-				newrect.top = tmpel.top;
+			newrect.top = tmpel.top;
 			}
 			if (newrect.right <= tmpel.left){
-				newrect.right = tmpel.left;
+			newrect.right = tmpel.left;
 			}
 			if (newrect.bottom <= tmpel.top){
-				newrect.bottom = tmpel.top;
+			newrect.bottom = tmpel.top;
 			}
-		});
-		newpoint.x=parseInt(newrect.left+(newrect.right-newrect.left)/2);
-		newpoint.y=parseInt(newrect.top+(newrect.bottom-newrect.top)/2);
+		});*/
+		newrect.left=document.getElementById('mainpic').offsetLeft;
+		newrect.lef=document.getElementById('mainpic').offsetLeft;
+		//document.getElementById('mainpic').offsetWidth
+		//offsetHeight
+		//newpoint.x=parseInt(newrect.left+(newrect.right-newrect.left)/2);
+		//newpoint.y=parseInt(newrect.top+(newrect.bottom-newrect.top)/2);
+		newpoint.x=parseInt(mapPic.clientWidth/2);
+		newpoint.y=parseInt(mapPic.clientHeight/2);
+		//возможно просто среднюю на карте
 		$(compressArr).each(function(){
 			this.style.left=newpoint.x+'px';
 			this.style.top=newpoint.y+'px';
 		});
-	});	
+	});
 	$('.langSelect .list-group-item').on('click',function(){
 		var el=$(this);
 		//select one
@@ -1039,10 +1498,13 @@ $(document).ready(function() {
 		globSettings['lang']=defaultLang;
 		//меняем язык
 		langSelect(defaultLang);
+		//меняем язык в html
+		//document.documentElement.lang=='ru'
+		document.documentElement.lang=defaultLang;
 		//hide tab
 		el.parent().toggleClass('hide');
 		//обновляем настройки
-		localStorage.setItem(settingsName, encodeURIComponent(JSON.stringify(globSettings)));
+		saveSettings();
 		//перезагружаем карту
 		loadMAPSettings(defaultLang).then((result1) => {
 			//Выводим группы
@@ -1051,15 +1513,47 @@ $(document).ready(function() {
 			profileSelect(defaultProfile);
 		})
 	});
+	function setDefaultProfile(){
+		//восстановим текущий профиль, переводим название в номер
+		const findNum=self['Profiles'].findIndex(item => item.pointarr === globSettings['currentProfile']);
+		defaultProfile=(findNum!=-1)?findNum:defaultProfile;			
+		profileIndex=defaultProfile;
+	}
+	function drawLinesOff(){
+		//уже не рисуем направляющие линии
+		tmpPointsDx={};
+		tmpDirectrix=null;
+		maptarget=null;
+		$('.drawingTools').hide();
+		$('#flylist .maingroups').toggleClass('hide');
+	}
+	function drawLinesOn(){
+		//рисуем направляющие линии
+		//обнуляем чтобы они были первыми
+		tmpPointsDx={};
+		tmpDirectrix=null;
+		maptarget=$('#mainpic');
+		dLSelected=dLSelectDefault;
+		//выделяем активный инструмент
+		dLSelect(dLSelected);
+		$('.drawingTools').show();
+		//скрываем группы
+		$('#flylist .maingroups').toggleClass('hide');
+	}
+	function paintActions(arrActions){
+		if (Array.isArray(arrActions)) {
+			arrActions.forEach(function(action){
+				if (self[action]){
+					document.querySelector('#flycMenu .list-group-item-text[data-action='+action+']').classList.add('active');
+				}
+			});
+		}
+	}
 	$('#flycMenu .list-group-item-text').on('click',function(event){
 		let zobj=this.dataset.action;
 		let el=$(this);
+		self[zobj]=1-self[zobj];
 		if (el.hasClass('active')){
-			el.removeClass('active');
-			if (zobj){
-				//keymove=0;
-				self[zobj]=0;
-			}
 			if (zobj=='invIndex'){
 				//0
 				$('#mainpic .mycircle').css('z-index','');
@@ -1071,21 +1565,11 @@ $(document).ready(function() {
 			if (zobj=='drawLines'){
 				//уже не рисуем направляющие линии
 				//console.log('drawlines');
-				tmpPointsDx={};
-				tmpDirectrix=null;
-				maptarget=null;
-				self[zobj]=0;
-				$('.drawingTools').hide();
-				$('#flylist .maingroups').toggleClass('hide');
-			}			
+				drawLinesOff();
+			}
 		}
 		else
 		{
-			el.addClass('active');
-			if (zobj){
-				//keymove=1;
-				self[zobj]=1;
-			}
 			if (zobj=='invIndex'){
 				//1
 				var maxindex=pointsarr.length;
@@ -1096,24 +1580,15 @@ $(document).ready(function() {
 			}
 			if (zobj=='routeShow'){
 				//строим маршрут
-				CreateRoute();
+				CreateRoute(1);
 			}
 			if (zobj=='drawLines'){
 				//рисуем направляющие линии
 				//обнуляем чтобы они были первыми
-				tmpPointsDx={};
-				tmpDirectrix=null;
-				maptarget=$('#mainpic');
-				self[zobj]=1;
-				dLSelected=dLSelectDefault;
-				//выделяем
-				dLSelect(dLSelected);
-				$('.drawingTools').show();
-				//убираем группы
-				$('#flylist .maingroups').toggleClass('hide');
-				//console.log('draw lines on');
+				drawLinesOn();
 			}
 		}
+		el.toggleClass('active');
 	})
 	$('.drawingToolsSetup .drawSetItem').on('click',function(e){
 		//left click
@@ -1123,7 +1598,6 @@ $(document).ready(function() {
 		if (e.target.tagName!='INPUT' && !e.target.classList.contains('mark')){
 			dataKey=el.data('key');
 			if (dataKey=='middleLabel'){
-			//{color: 'red'})
 				dataVal=el.find('input').val();
 				if (dataVal.length){
 					//leaderLineOptions[dataKey]=dataVal;
@@ -1145,25 +1619,19 @@ $(document).ready(function() {
 		var parentEl=el.parent();
 		var elInput=parentEl.find('input');
 		var checkStatus=elInput.prop('checked');
-		
 		if (checkStatus){
 			//да
 			let StartColor=$('.drawingTools .setColors .first .mark').data('color');
 			let EndColor=lineColor=$('.drawingTools .setColors .back .mark').data('color');
-			
 			parentEl.addClass('active');
-			
 			parentEl.css('background',EndColor);
 			parentEl.css('background','linear-gradient(90deg, '+StartColor+' 0%, '+EndColor+' 100%)');
-			
 			leaderLineOptions[parentEl.data('key')]=true;
-		}else{
+			}else{
 			parentEl.removeClass('active');
 			parentEl.css('background','inherit');
-			
 			leaderLineOptions[parentEl.data('key')]=false;
 		}
-		
 	});
 	$('.drawingToolsSetup .setOptions .option').on('click',function(e){
 		//left click
@@ -1171,24 +1639,19 @@ $(document).ready(function() {
 		var par=el.closest('.setOptions');
 		var dataVal;
 		var dataKey;
-		
 		dataKey=par.data('key');
 		dataVal=el.data('value');
 		if (dataVal=='input'){
 			return;
 		}
-		
 		//переключение активности
 		par.find('.option').removeClass('active');
 		el.addClass('active');
 		par.removeClass('active');
-		
 		e.stopPropagation();
-		
-		//Ставим что должны	
-		
+		//Ставим что должны
 		if (dataVal.length && dataKey.length){
-			//Значения есть			
+			//Значения есть
 			leaderLineOptions[dataKey]=dataVal;
 		}
 	});
@@ -1206,7 +1669,7 @@ $(document).ready(function() {
 			/*console.log ('button '+e.button);*/
 			$('.drawingToolsSetup').toggleClass('active');
 			//return false;
-		}else{
+			}else{
 			//console.log ('button '+e.button);
 		}
 	});
@@ -1226,10 +1689,9 @@ $(document).ready(function() {
 	}
 	function drawLineTmp(x1,y1,x2,y2){
 		var curscale=Profiles[profileIndex].zoom;
-		
 		switch (dLSelected){
-		case 0:
-		//временная линия
+			case 0:
+			//временная линия
 			if (tmpDirectrix!=null && tmpDirectrix){
 				//перерисовываем
 				tmpDirectrix=correctLineStraight(tmpDirectrix,x2*curscale,y2*curscale);
@@ -1239,9 +1701,9 @@ $(document).ready(function() {
 				//первый раз рисуем
 				tmpDirectrix=drawLineStraight(x1*curscale,y1*curscale,x2*curscale,y2*curscale);
 			}
-		break;
-		case 1:
-		//постоянная линия
+			break;
+			case 1:
+			//постоянная линия
 			if (tmpDirectrix!=null && tmpDirectrix){
 				//перерисовываем
 				tmpDirectrix=correctLineStraight(tmpDirectrix,x2*curscale,y2*curscale);
@@ -1253,7 +1715,7 @@ $(document).ready(function() {
 				//первый раз рисуем
 				tmpDirectrix=drawLineEx(x1*curscale,y1*curscale,x2*curscale,y2*curscale);
 			}
-		break;
+			break;
 		}
 	}
 	function correctLineStraight(obj,x2,y2){
@@ -1263,13 +1725,10 @@ $(document).ready(function() {
 	}
 	function drawLineStraight(x1,y1,x2,y2,lineColor='none'){
 		//временная прямая линия
-		
 		if (lineColor=='none'){
 			lineColor=$('.drawingTools .setColors .back .mark').data('color');
 		}
-		
 		var mapPic=document.getElementById('mainpic');
-		
 		var elStart=LeaderLine.pointAnchor(mapPic, {x: x1, y: y1});
 		var elend=LeaderLine.pointAnchor(mapPic, {x: x2, y: y2});
 		return new LeaderLine(
@@ -1290,29 +1749,23 @@ $(document).ready(function() {
 		var elend={};
 		var lineOptions={};
 		var lineOptionsArr={}; // временный массив для запоминания
-
 		//это постоянная линия, записываем координаты во временный массив, а потом в общий массив линий
 		lineOptionsArr['x1']=x1;lineOptionsArr['y1']=y1;
 		lineOptionsArr['x2']=x2;lineOptionsArr['y2']=y2;
-		
 		//начальные координаты
 		elStart=LeaderLine.pointAnchor(mapPic, {x: x1, y: y1});
 		elend=LeaderLine.pointAnchor(mapPic, {x: x2, y: y2});
-
 		//цвет и другие опции
 		lineColor=$('.drawingTools .setColors .back .mark').data('color');
 		lineOptions['start']=elStart;
 		lineOptions['end']=elend;
 		lineOptions['color']=lineColor;
-		
 		//merge опций по умолчанию и тех что уже есть
 		lineOptions={ ...lineOptions, ...leaderLineOptions };
-		
 		//merge опций временного массива и тех что выводятся
 		lineOptionsArr={...lineOptions,...lineOptionsArr};
 		lineOptionsArr['start']=undefined;
 		lineOptionsArr['end']=undefined;
-		
 		//преобазование некоторых опций
 		if (lineOptions['middleLabel']!=undefined){
 			lineOptions['middleLabel']=LeaderLine.captionLabel({text: lineOptions['middleLabel']['text'], color: lineOptions['middleLabel']['color']});
@@ -1322,14 +1775,10 @@ $(document).ready(function() {
 			lineOptions['startPlugColor']=StartColor;
 			lineOptions['endPlugColor']=lineColor;
 		}
-		
-		
 		//это постоянная линия, запоминаем её.
 		arrPLines.push(lineOptionsArr);
-
 		return new LeaderLine(lineOptions);
 	}
-	
 	function DeleteRoute(){
 		RouteLines.forEach(function(element){
 			element.remove();
@@ -1355,11 +1804,20 @@ $(document).ready(function() {
 			element.classList.add('hide');
 		});
 	}
-	function CreateRoute(){
+	function CreateRoute(first=0){
 		//Получаем новый маршрут
 		var routes=GetCurRoute();
+		let firstId=routes.curRoute.eq(0);
+		//если первый - история
+		if (firstId.hasClass('hide')){
+			firstId=routes.curRoute.eq(1);
+		}
 		var prevElem=null;
 		var tmphide=[];
+		//центрируем если в первый раз
+		if (first){
+			centerOnMap(firstId);
+		}
 		/*
 			path:
 			straight
@@ -1372,6 +1830,7 @@ $(document).ready(function() {
 		routes.curRoute.each(function(){
 			if (prevElem){
 				if (prevElem.classList.contains('hide')){
+					//открываем чтобы построить маршрут, если точка из истории
 					tmphide.push(prevElem);
 					prevElem.classList.remove('hide');
 				}
@@ -1381,7 +1840,10 @@ $(document).ready(function() {
 			}
 			prevElem=this;
 		});
-
+		//в первый раз и это мобильный, показываем popup
+		if (first && detMob){
+			showWndDesc(firstId[0].title,firstId[0]);
+		}
 		//скрываем
 		tmphide.forEach(function(element){
 			element.classList.add('hide');
@@ -1390,18 +1852,12 @@ $(document).ready(function() {
 	function GetCurRoute(){
 		//вычитаем игнор лист
 		var ignoreList=[];
-		//.not('#mapoint2,#mapoint3')
-		globIgnore.forEach(function(element){  let arrelem=element.split(profSym);if (arrelem[1]==self['Profiles'][profileIndex].pointarr){ ignoreList.push('#'+preId+arrelem[0]);} });
+		//игнор лист
+		if (globIgnore && globIgnore.length){
+			globIgnore.forEach(function(element){  let arrelem=element.split(profSym);if (arrelem[1]==self['Profiles'][profileIndex].pointarr){ ignoreList.push('#'+preId+arrelem[0]);} });
+		}
 		//вычисляем маршрут
 		var curRoute=$('#mainpic .mycircle').not('.hide').not(ignoreList.join(',')).slice(0,defRouteCount);
-		//var curRoute={};
-		/*curRouteOld.each(function(){
-			var dataIdFull=this.id+profSym+self['Profiles'][profileIndex].pointarr;
-			//Проверка если в игнор листе
-			if (!globIgnore.includes(dataIdFull)){
-			curRoute=jQuery.merge($(this),curRoute);
-			}
-		});*/
 		var options={};
 		//добавляем историю
 		if (globhist!==null && globhist.length){
@@ -1410,7 +1866,7 @@ $(document).ready(function() {
 			if (lastHist[1]==self['Profiles'][profileIndex].pointarr){
 				var dataIdFull=lastHist[0]+profSym+self['Profiles'][profileIndex].pointarr;
 				//Проверка если в игнор листе
-				if (!globIgnore.includes(dataIdFull)){
+				if (globIgnore && !globIgnore.includes(dataIdFull)){
 					curRoute=jQuery.merge($('#'+lastHist[0]),curRoute)
 					options.firstHist=1;
 				}
@@ -1418,6 +1874,95 @@ $(document).ready(function() {
 		}
 		return {curRoute:curRoute,options:options};
 	}
+	function refreshTGuides(target=null){
+		let dataids=[];
+		if (!target || target.tagName=="IMG"){
+			//глобальное обновление
+			dataids=Object.keys(arrBindLines);
+		}
+		else
+		{
+			dataids.push($(target).data('id'));
+		}
+		if (dataids.length){
+			//для каждой точки
+			dataids.forEach(function(index){
+				if (arrBindLines[index]){
+					//для каждой записи
+					arrBindLines[index].forEach(function(iLine){
+						iLine.position();
+					})
+				}
+			})
+		}
+	}
+	
+	$('#tmpContMenu .list-group-item .drawtguides').on('click',function(e){
+		//контекстное меню точки: нарисовать направляющие
+		const parentel=$(this).closest('#tmpContMenu');
+		const dataid=parentel.data('itemId');
+		
+		if (!dataid){console.log('no point id');}
+		
+		let el=document.querySelector('#'+preId+dataid);
+		let  curscale=Profiles[profileIndex].zoom;
+		//const elContinuous=el.find('.addContinuous');
+		//elContinuous.removeClass('active');
+		
+		if (dataid && el && !el.classList.contains('hide')){
+			let ActiveState=this.classList.contains('active');
+			
+			if (ActiveState){
+				//вкл. - выкл.
+				if (arrBindLines[dataid]){
+					arrBindLines[dataid].forEach(function(iLine){
+						iLine.remove();
+					})
+					delete arrBindLines[dataid];
+					//выключаем индикатор
+					this.classList.remove('active');
+				}
+			}
+			else
+			{
+				let lineColor = document.querySelector('.drawingTools .setColors .back .mark')?.dataset.color || "#fff";
+				let sizelen=document.querySelector('body').getBoundingClientRect().width;
+				let clientWidth=el.clientWidth*curscale;
+				let clientHeight=el.clientHeight*curscale;
+				
+				let elStart=LeaderLine.pointAnchor(el, {x: -sizelen/2, y: 0});
+				let elend=LeaderLine.pointAnchor(el, {x: sizelen/2, y: 0});
+				let line1=new LeaderLine({start:elStart,end:elend,path:'straight',color:lineColor,dash: true,endPlug:'behind',size:1,});
+				
+				elStart=LeaderLine.pointAnchor(el, {x: -sizelen/2, y: clientHeight});
+				elend=LeaderLine.pointAnchor(el, {x: sizelen/2, y: clientHeight});
+				let line3=new LeaderLine({start:elStart,end:elend,path:'straight',color:lineColor,dash: true,endPlug:'behind',size:1,});
+				
+				
+				elStart=LeaderLine.pointAnchor(el, {x: 0, y: -sizelen/2});
+				elend=LeaderLine.pointAnchor(el, {x: 0, y: sizelen/2});
+				let line2=new LeaderLine({start:elStart,end:elend,path:'straight',color:lineColor,dash: true,endPlug:'behind',size:1,});
+				
+				elStart=LeaderLine.pointAnchor(el, {x: clientWidth, y: -sizelen/2});
+				elend=LeaderLine.pointAnchor(el, {x: clientWidth, y: sizelen/2});
+				let line4=new LeaderLine({start:elStart,end:elend,path:'straight',color:lineColor,dash: true,endPlug:'behind',size:1,});
+				
+				arrBindLines[dataid]=[];
+				arrBindLines[dataid].push(line1);
+				arrBindLines[dataid].push(line2);
+				arrBindLines[dataid].push(line3);
+				arrBindLines[dataid].push(line4);
+				//включаем/выключаем индикатор
+				this.classList.add('active');
+			}
+		}
+		else{
+			console.log('object hidden');
+		}
+		//убираем меню
+		parentel.toggleClass('hide');
+	});
+	
 	$('#tmpContMenu .list-group-item .chgroup').on('click',function(e){
 		//старый номер группы
 		var parentel=$(this).closest('#tmpContMenu');
@@ -1427,6 +1972,7 @@ $(document).ready(function() {
 		var tmpGroup;
 		//ищем прошлую группу в pointsarr по номеру и от туда берем номер группы
 		try {
+			//сама точка ищется правильно, а вот в pointsarr там отсчет с 0
 			tmpGroup=$.parseJSON(pointsarr[numi-1].Groups);
 			tmpGroup=(tmpGroup.length)?tmpGroup[0]:0;
 		}
@@ -1448,7 +1994,7 @@ $(document).ready(function() {
 					olddesc=objMetka.attr('title');
 					$(this).remove();
 					//добавляем новую запись в другую группу но с тем же номером
-					placelisttext(group,olddesc,numi,clsActive,clsHide);
+					placelisttext(group,pointsarr[numi-1],numi,clsActive,clsHide);
 					UpdateCountGr(tmpGroup);
 					UpdateCountGr(group);
 					//А также обновляем сведениия в pointsarr
@@ -1489,7 +2035,6 @@ $(document).ready(function() {
 				else{
 					console.log('error delete');
 				}
-				
 				//удаляем в списке
 				if (par.length){
 					par.remove();
@@ -1504,23 +2049,42 @@ $(document).ready(function() {
 	$('#tmpContMenu .list-group-item .toIgnore').on('click',function(e){
 		var parentel=$(this).closest('#tmpContMenu');
 		var dataid=parentel.data('itemId');
-		var dataIdFull=dataid+profSym+self['Profiles'][profileIndex].pointarr;
-		//Проверка
-		if (!globIgnore.includes(dataIdFull)){
-			//добавление в игнор лист
-			globIgnore.push(dataIdFull);
-			//update ignore
-			setCookie(IgnoreName,JSON.stringify(globIgnore),{expires:60*60*24*30,path:'/'})
-			if (typeof(routeShow)!='undefined' && routeShow){
-				//маршрут включен и это двигается центральная картинка или точка маршрута, обновляем позиции
-				//refreshRoute();
-				DeleteRoute();
-				CreateRoute();
-			}					
+		//var dataIdFull=dataid+profSym+self['Profiles'][profileIndex].pointarr;
+		//добавление в игнор лист
+		toIgnoreList(dataid);
+		if (typeof(routeShow)!='undefined' && routeShow){
+			//маршрут включен и это двигается центральная картинка или точка маршрута, обновляем позиции
+			//refreshRoute();
+			DeleteRoute();
+			CreateRoute();
 		}
 		event.preventDefault();
 		parentel.addClass('hide');
 	});
+	$('#tmpContMenu .list-group-item .addContinuous').on('click',function(e){
+		//добавляем свойство длительности
+		let parentel=$(this).closest('#tmpContMenu');
+		let dataid=parentel.data('itemId')-1;
+		if (typeof(pointsarr[dataid])!='undefined'){
+			pointsarr[dataid].continuous=!pointsarr[dataid].continuous;
+		}
+		//также поменяем в общем массиве, уже есть, возможно там прямые ссылки на глобальный массив
+		//self[Profiles[profileIndex].pointarr][dataid].continuous=!self[Profiles[profileIndex].pointarr][dataid].continuous;
+		//закрываем окно
+		event.preventDefault();
+		parentel.addClass('hide');
+	});
+	function toIgnoreList(elId){
+		let dataIdFull=elId+profSym+self['Profiles'][profileIndex].pointarr;
+		//добавление в игнор лист
+		//Проверка
+		if (globIgnore && !globIgnore.includes(dataIdFull)){
+			//добавление в игнор лист
+			globIgnore.push(dataIdFull);
+			//update ignore
+			setCookie(IgnoreName,JSON.stringify(globIgnore),{expires:60*60*24*30,path:'/'})
+		}
+	}
 	$('#tmpContMenu .list-group-item .delpoint').on('click',function(e){
 		//удаляем точку на карте
 		//старый номер группы
@@ -1554,24 +2118,70 @@ $(document).ready(function() {
 			//удаляем её из истории - не сильно надо.
 		}
 	});
-	$('#mainpic').mousedown(function(event){
+	$('#mainpic').on('touchstart',function(e){
+		isDragging = true;
+		e.preventDefault(); // Блокируем стандартное поведение
+	});
+	$('#mainpic').on('touchmove',function(e){
+		if (isDragging) {
+			e.preventDefault(); // Блокируем скролл страницы при движении картинки
+		}
+	});
+	$('#mainpic').on('touchend',function(e){
+		isDragging = false;
+	});
+	//mousedown
+	$('#mainpic').on('pointerdown',function(event){
 		var searchstr='';
 		$('#flycMenu').addClass('hide');
 		$('#flyaoMenu').addClass('hide');
 		//console.log(event);
-		if (event.target.className.indexOf('mycircle')>=0){mapcircle=1;}
-		if (event.shiftKey && mapcircle==1 && !gsize){
-			//хотим изменить маркер
-			var desc = prompt("Описание:", event.target.title) || event.target.title;
-			if (desc != null) {
-				event.target.title=desc;
+		//просто сбор периодичности кликов для имитации dblclick на мобиле отключить 
+		//tapCount++;
+		/*if (tapCount === 2) {
+			clearTimeout(tapTimer);
+			if ((event.target.className.indexOf('mycircle')>=0) && $('body').hasClass('mobile')){
+			console.log('dblclick');
+			mycircleDblclick(event.target.id);
 			}
+			tapCount = 0;
+			}
+			else{
+			tapTimer = setTimeout(() => {
+			tapCount = 0;
+			}, 300); // Таймаут между кликами
+		}*/
+		//мы нажали на точку
+		if (event.target.classList.contains('mycircle') && !event.target.classList.contains('hide') ){mapcircle=1;}
+		
+		if (event.shiftKey && mapcircle==1 && !gsize){
+			var el=event.target;
+			var elem=$(el);
+			//хотим изменить маркер
+			var desc = el.title;
+			setTimeout((el,elem,desc) => {
+				var desc=prompt('Описание:',desc);
+				if (desc != null) {
+					numprof=elem.siblings('.mycircle').addBack().index(elem);
+					//также запишем в профиль
+					if (self[Profiles[profileIndex].pointarr][numprof].Name==el.title){
+						//старое описание совпадает
+						self[Profiles[profileIndex].pointarr][numprof].Name=desc;
+					}
+					else{
+						console.log('ошибка, описание не совпадает '+self[Profiles[profileIndex].pointarr][numprof].Name);
+					}
+					el.title=desc;
+				}
+			}, 50,el,elem,desc); // Короткая задержка в 50мс
 		}
 		else if(event.ctrlKey && mapcircle==1 && !gsize){
-			//Меняем группу, не меняем, будем выводить меню с выбором
+			//Показ меню точки
 			let el=$('#tmpContMenu');
 			let elh=el.outerHeight();
 			let menuheight=0;
+			//const elId=parseInt($(event.target).attr('id').replace( /[^\d]/g, "" ));
+			const elId=$(event.target).data('id');
 			el.toggleClass('hide');
 			el.css('left',event.pageX+'px');
 			menuheight=event.pageY;
@@ -1579,8 +2189,29 @@ $(document).ready(function() {
 			if (event.pageY+elh>$('body').height()){
 				menuheight-=elh;
 			}
-			el.css('top',menuheight+'px');			
-			el.data('itemId',$(event.target).attr('id').replace( /[^\d]/g, "" ));
+			el.css('top',menuheight+'px');
+			el.data('itemId',elId);
+			//добавляем индикатор длительной кнопки
+			const elContinuous=el.find('.addContinuous');
+			elContinuous.removeClass('active');
+			if (elId-1>0){
+				if (pointsarr[elId-1].continuous){
+					elContinuous.addClass('active');
+				}
+				else
+				{
+					elContinuous.removeClass('active');
+				}
+			}
+			//добавляем индикатор направляющих
+			const elDrawtguides=el.find('.drawtguides');
+			if (arrBindLines[elId]){
+				elDrawtguides.addClass('active');
+			}
+			else
+			{
+				elDrawtguides.removeClass('active');
+			}
 		}
 		if (event.ctrlKey && mapcircle==0){
 			//активация лупы подсказки
@@ -1632,10 +2263,20 @@ $(document).ready(function() {
 		el=$(this);
 		el.addClass('active');
 		if (mapcircle==1){el=$(event.target);maptarget=el;}
-		mapposx=parseInt(event.pageX);
-		mapposy=parseInt(event.pageY);
-		mapposcx=parseInt(el.css('left'));
-		mapposcy=parseInt(el.css('top'));
+		if (event.type=="touchstart" ){
+			/*event.originalEvent.touches[0].clientX*/
+			mapposx=parseInt(event.originalEvent.touches[0].screenX);
+			mapposy=parseInt(event.originalEvent.touches[0].screenY);
+			mapposcx=parseInt(el.css('left'));
+			mapposcy=parseInt(el.css('top'));
+			event.preventDefault()
+		}
+		else{
+			mapposx=parseInt(event.pageX);
+			mapposy=parseInt(event.pageY);
+			mapposcx=parseInt(el.css('left'));
+			mapposcy=parseInt(el.css('top'));
+		}
 		if (circlept){
 			mapposcx=parseInt(event.pageX);
 			mapposcy=parseInt(event.pageY);
@@ -1666,13 +2307,22 @@ $(document).ready(function() {
 		}
 		return false;
 	});
-	$('#body').ondragstart = function() {
+	$('#body').on('dragstart',function(event) {
+		//ondragstart
+		event.preventDefault();
 		return false;
-	};	
-	$('#mainpic').ondragstart = function() {
+	});
+	$('#mainpic').on('dragend',function(event) {
+		event.preventDefault();
 		return false;
-	};	
-	$('body').mouseup(function(event){
+	});
+	$('#mainpic').on('pointercancel',function(event) {
+		console.log('pointercancel');
+		event.preventDefault();
+		return false;
+	})
+	//mouseup
+	$('body').on('pointerup',function(event){
 		//console.log('mouseup');
 		var mainpic=$('#mainpic');
 		var curscale=Profiles[profileIndex].zoom;
@@ -1692,6 +2342,7 @@ $(document).ready(function() {
 			var tmpGroup=maptarget.attr('id').replace( /[^\d]/g, "" );
 			//ищем его в pointsarr по номеру и от туда берем номер группы
 			try {
+				//отсчет с 0
 				tmpGroup=$.parseJSON(pointsarr[tmpGroup-1].Groups);
 				tmpGroup=(tmpGroup.length)?tmpGroup[0]:0;
 			}
@@ -1699,32 +2350,36 @@ $(document).ready(function() {
 				console.log('Не удалось определить группу');
 				tmpGroup=0;
 			}
-			var desc = prompt("Описание:", maptarget.attr('title'));
-			var group = prompt("Номер группы:", tmpGroup);
-			if (desc != null && group != null ) {
-				//Новый номер
-				var numi=mainpic.find('.mycircle').length;
-				//не с 0
-				if (Profiles[profileIndex].StartIndex>0){
-					numi+=Profiles[profileIndex].StartIndex;
+			var numi=mainpic.find('.mycircle').length;
+			//не с 0, там как раз будет +1 для кнопки
+			if (Profiles[profileIndex].StartIndex>0){
+				numi+=Profiles[profileIndex].StartIndex;
+			}			
+			//кнопка-фантом
+			placebtn(oldx,oldy,numi,'',0,0,'');
+			setTimeout((targetTitle,tmpGroup,numi,oldx,oldy) => {
+				var desc = prompt("Описание:", targetTitle);
+				var group = prompt("Номер группы:", tmpGroup);
+				//удаляем фантом
+				mainpic.find('#'+preId+numi).remove();
+				if (desc != null && group != null ) {
+					let newElement={'Name':desc,'CoordX':oldx+'px','CoordY':oldy+'px','Groups':'['+group+']'};
+					//Новый номер
+					pointsarr.push(newElement);
+					//надо ставить уже активный маркер
+					//Новый текст
+					placelisttext(group,newElement,numi,1,1);
+					UpdateCountGr(group);
+					var bonusClass='';
+					//Добавляем очищалку стиля для групп точек
+					var tmpgroup=Profiles[profileIndex].GpoupList[group];
+					if (tmpgroup.indexOf('{!style=')>=0){
+						bonusClass='ClearCg';
+					}
+					//Новая кнопка
+					placebtn(oldx,oldy,numi,desc,0,group,bonusClass);
 				}
-				pointsarr.push({'Name':desc,'CoordX':oldx+'px','CoordY':oldy+'px','Groups':'['+group+']'});
-				//надо ставить уже активный маркер
-				//Новый текст
-				placelisttext(group,desc,numi,1,1);
-				UpdateCountGr(group);
-				var bonusClass='';
-				//Добавляем очищалку стиля для групп точек
-				var tmpgroup=$('.maingroups .list-group-item:not(.autohist)').eq(group);
-				if (tmpgroup.get(0).hasAttribute('custombg') || tmpgroup.get(0).hasAttribute('customstyle')){
-					//очищалка
-					//mainpic.find('.cg'+z).addClass('ClearCg');
-					bonusClass='ClearCg';
-				}
-				////////
-				//Новая кнопка
-				placebtn(oldx,oldy,numi,desc,0,group,bonusClass);
-			}
+			}, 50,maptarget.attr('title'),tmpGroup,numi,oldx,oldy); // Короткая задержка в 50мс
 		}
 		if (drawLines && mapcircle==0){
 			//запоминаем точку
@@ -1776,12 +2431,12 @@ $(document).ready(function() {
 			}
 		}
 	});
-	$('#mainpic').mousemove(function(event){
+	//mousemove
+	$('#mainpic').on('pointermove',function(event){
 		var curscale=1;
 		var element = document.querySelector('#mainpic');
 		var scaleX = element.getBoundingClientRect().width / element.offsetWidth;
 		var curscale=Profiles[profileIndex].zoom;
-		
 		if ($(this).hasClass('active') || circlept || Selectpt || drawLines){
 			var mainpic;
 			//если это круг
@@ -1790,7 +2445,7 @@ $(document).ready(function() {
 				mainpic=maptarget;
 			}
 			else if (circlept==1){
-				//круг пунктирный
+				//круг-квадрат подсказка
 				mainpic=maptarget;
 				var inwnd=inWindow(maptarget,$('#mainpic .mycircle').not('.hide'));
 				if (inwnd.length){
@@ -1826,7 +2481,8 @@ $(document).ready(function() {
 				//это мы в процессе рисования временной линии
 				mainpic=null;
 				//перемещаем точку 2
-				if (tmpPointsDx.x1!=undefined && maptarget && mapposx!=0){
+				//if (tmpPointsDx.x1!=undefined && maptarget && mapposx!=0){ - раньше было
+				if (tmpPointsDx.x1!=undefined){
 					//мы должны прорисовать линию от старых координат до новых, но возможно стоит только точки обновить.
 					var xEnd=event.offsetX;
 					var yEnd=event.offsetY;
@@ -1838,7 +2494,7 @@ $(document).ready(function() {
 						if (cx<=cy){
 							//и какое меньше, допустим x - выравниваем по горизонтали, усредняем x
 							xEnd=tmpPointsDx.x1;
-						}else{
+							}else{
 							yEnd=tmpPointsDx.y1;
 						}
 					}
@@ -1897,7 +2553,7 @@ $(document).ready(function() {
 				}
 				else
 				{
-					//тоже mapcircle, но не глобальное
+					//тоже mapcircle, но уже глобальное
 					//Корректировка на основе zoom
 					if (mapcircle){
 						curscale=scaleX;
@@ -1905,10 +2561,13 @@ $(document).ready(function() {
 						cy=mapposcy+(event.pageY-mapposy)/curscale;
 					}
 					if (mainpic){
+						//console.log('map moved');
 						mainpic.css('left',cx+'px');
 						mainpic.css('top',cy+'px');
 						//Также обновляем временные линии (даже если не включены маршруты)
 						refreshDirectrix();
+						//обновляем позиции направляющих если они есть
+						refreshTGuides(event.target);
 					}
 					if (typeof(routeShow)!='undefined' && routeShow){
 						//маршрут включен и это двигается центральная картинка или точка маршрута, обновляем позиции
@@ -1934,8 +2593,8 @@ $(document).ready(function() {
 			}
 			$('#mainpic').css({'transform':'scale('+zoom+')'});
 		}
-	});				
-	// функция, которая по заданному селектору 
+	});
+	// функция, которая по заданному селектору
 	// найдет соответствующие ему элементы, которые
 	// при этом попадают в видимую область окна
 	function inWindow(wnd,currentEls){
@@ -1954,25 +2613,35 @@ $(document).ready(function() {
 			}
 		});
 		return $(result);
-	}				
+	}
 	$('#flylist').on('dblclick','.list-group-item-text',function(event){
 		var el=$(this);
 		var cce=$('#'+el.data('id'));
 		centerOnMap(cce);
+		//подсветка
+		cce.addClass('pulse')						
+		setTimeout(() => cce.removeClass('pulse'),1500);
 	});
+	function mycircleDblclick(newid){
+		//дабл клик по кругу - ищем его id в списке и тыкаем по иконке.
+		var flylist;
+		//проверка - скрыт не кликаем
+		if (document.getElementById(newid).classList.contains('hide')){
+			return;
+		}
+		flylist=$('#flylist .list-group-item .list-group-item-text');
+		flylist.each(function(){
+			if ($(this).data('id')==newid){
+				//нашли
+				$(this).find('.icon').trigger('click');
+			}
+		});
+		UpdateCountGr();
+	}
 	$('#mainpic').dblclick(function(event){
 		if (event.target.className.indexOf('mycircle')>=0){
-			//дабл клик по кругу - ищем его id в списке и тыкаем по иконке.
-			var newid=event.target.id;
-			var flylist;
-			flylist=$('#flylist .list-group-item .list-group-item-text');
-			//console.log(newid);
-			flylist.each(function(){
-				if ($(this).data('id')==newid){
-					//нашли
-					$(this).find('.icon').trigger('click');
-				}
-			});
+			//дабл клик по кругу
+			mycircleDblclick(event.target.id);
 		}
 		else if(circlept==1){
 			var tmpDesc=$('.objcirclept .ptDescr').text();
@@ -2018,7 +2687,7 @@ $(document).ready(function() {
 				if (event.pageY+elh>$('body').height()){
 					menuheight-=elh;
 				}
-				el.css('top',menuheight+'px');			
+				el.css('top',menuheight+'px');
 				//Найдем группу
 				let sibs=par.parent().find('.list-group-item').not('.autohist');
 				let groupIndex=sibs.index(par);
@@ -2075,19 +2744,12 @@ $(document).ready(function() {
 				//равно - вообще не перемещаюсь
 			}
 			//визуально
-			//add
-			/*let GrFromVis=GrFrom;
-				if (groupIndex<GrFrom){
-				GrFromVis+=1;
-			}*/
 			//лучше так не делать и копировать полностью
 			//par.after(wrapMainGroups(GrVal));
 			par.after(sibs.eq(GrFrom));
 			//remove уже не нужно
 			//sibs.eq(GrFromVis).remove();
-			
 			//перемещение групп точек в памяти
-			
 			//составим хеш массивы
 			let startI=groupIndex;
 			let endI=GrFrom;
@@ -2105,7 +2767,6 @@ $(document).ready(function() {
 			}
 			//конечные
 			arrRename[GrFrom]=groupIndex;
-			
 			//цикл перемещения, в памяти менять бессмысленно, т.к. вся инфа собирает по точкам карты,
 			//но суть в том что инфа по точкам и их группам собирается из групп слева, хотя и стоит того если мы захотим скакать с карты на карту
 			for (tmppoint in self[Profiles[profileIndex].pointarr]) {
@@ -2117,7 +2778,6 @@ $(document).ready(function() {
 					self[Profiles[profileIndex].pointarr][tmppoint].Groups=JSON.stringify([arrRename[curG]]);
 				}
 			}
-			
 		}
 		else{
 			if (el.hasClass('closed')){
@@ -2136,26 +2796,50 @@ $(document).ready(function() {
 		var el=$(this);
 		var par=el.parent(); //.list-group-item-text
 		var groupnum=par.data('group');
-		if (par.hasClass('active')){
+		var parActive=par.hasClass('active');
+		let elContinuous=par.data('continuous');
+		
+		if (parActive){
 			//Скрываем
 			par.removeClass('active');
-			$('#'+par.data('id')).addClass('hide');
+			if (!elContinuous){
+				//кнопка длительная - не скрываем
+				$('#'+par.data('id')).addClass('hide');
+			}
 			//off - add to history
 			if (!par.parent().hasClass('autohist'))
 			{
 				//уже нельзя полагаться на profileIndex т.к. он меняется
-				//var dataid=par.data('id')+profSym+profileIndex;
 				//get number profile by pointarr
 				var dataid=par.data('id')+profSym+self['Profiles'][profileIndex].pointarr;
-				//Чтобы не было дублей
-				if (globhist!==null && !globhist.includes(dataid)){
+				let noDbl=false;
+				
+				if (elContinuous){
+					//проверяем последний элемент, если он не совпадает с нашим ид, либо истории нет
+					if (!globhist.length || globhist.at(-1)!=dataid){
+						//не совпало, дублей нет,
+						noDbl=true;
+					}
+				}
+				else
+				{
+					if (!globhist.length || !globhist.includes(dataid)){
+						noDbl=true;
+					}
+				}
+				
+				//Добавляем в историю, проверяем чтобы не было дублей
+				if (noDbl){
 					var newel=$($.parseHTML(jQuery.trim(par.get(0).outerHTML)));
 					newel.data('id',par.data('id'));
 					newel.data('prof',self['Profiles'][profileIndex].pointarr);
+					//новая запись в группу история
 					if (!$('#flylist .autohist .list-group-item-heading .text').hasClass('closed')){
 						//скрывалось в истории когда она закрыта
 						newel.removeClass('hide');
-						}else{
+					}
+					else
+					{
 						newel.addClass('hide');
 					}
 					newel.append($('<span class="icondel"></span>'));
@@ -2170,21 +2854,7 @@ $(document).ready(function() {
 						//refreshRoute();
 						DeleteRoute();
 						CreateRoute();
-					}					
-				}
-			}
-			else
-			{
-				//it is history - unclick from other
-				var flylist=$('#flylist .list-group-item-text').not(par);
-				var parid=par.data('id');
-				let histprof=par.data('prof');
-				if (profileIndex==histprof){
-					flylist.each(function(){
-						if ($(this).data('id')==parid){
-							$(this).removeClass('active');
-						}
-					});
+					}
 				}
 			}
 		}
@@ -2192,18 +2862,26 @@ $(document).ready(function() {
 		{
 			par.addClass('active');
 			$('#'+par.data('id')).removeClass('hide');
-			if (par.parent().hasClass('autohist')){
-				//it is history - ununclick from other
-				var flylist=$('#flylist .list-group-item-text').not(par);
-				var parid=par.data('id');
-				var histprof=par.data('prof');
-				if (profileIndex==histprof){
-					flylist.each(function(){
-						if ($(this).data('id')==parid){
+		}
+		//доп. реакция в синхрон с историей
+		if (par.parent().hasClass('autohist')){
+			var flylist=$('#flylist .list-group-item-text').not(par);
+			var parid=par.data('id');
+			var histprof=par.data('prof');
+			if (profileIndex==histprof){
+				flylist.each(function(){
+					if ($(this).data('id')==parid){
+						if (parActive){
+							//it is history - unclick from other
+							$(this).removeClass('active');
+						}
+						else
+						{
+							//it is history - ununclick from other
 							$(this).addClass('active');
 						}
-					});
-				}
+					}
+				});
 			}
 		}
 		UpdateCountGr(groupnum);
@@ -2220,8 +2898,10 @@ $(document).ready(function() {
 				//первый раз
 				movehist=1;
 				var el=$(this);
-				var elstr=el.data('id')+profSym+el.data('prof');
-				histMoveNum=globhist.indexOf(elstr);
+				//var elstr=el.data('id')+profSym+el.data('prof');
+				//histMoveNum=globhist.indexOf(elstr);
+				//нам лучше найти точку в истории (номер)
+				histMoveNum=el.data('histId');
 			}
 		}
 		else{
@@ -2230,6 +2910,7 @@ $(document).ready(function() {
 				movehist=0;
 				var el=$(this);
 				el.removeClass('hMove');
+				
 				var elstr=el.data('id')+profSym+el.data('prof');
 				if (histMoveNum>=0 && elstr!=globhist[histMoveNum]){
 					//удаляем первый элемент
@@ -2267,7 +2948,6 @@ $(document).ready(function() {
 			}
 		}
 	}, ".list-group-item:not(autohist)");
-	
 	$('#flylist').on({
 		mouseenter: function () {
 			var el=$(this);
@@ -2283,11 +2963,178 @@ $(document).ready(function() {
 				el.removeClass('hMove')
 			}
 		}
-	}, ".list-group-item.autohist .list-group-item-text"); 
+	}, ".list-group-item.autohist .list-group-item-text");
+	$('#flyProf').on({
+		mouseenter: function () {
+			var el=$(this);
+			if (moveMaps){
+				el.addClass('mapMove')
+			}
+		},
+		mouseleave: function () {
+			var el=$(this);
+			if (moveMaps){
+				el.removeClass('mapMove')
+			}
+		}
+	}, ".mainfly .list-group-item");
 	//list-group-item
 	$('#mainpic').on('mouseenter','.mycircle',function(){
 		lastId=this.id;
 	});
+	$('#mainpic').on('pointerdown','.mycircle',function(event){
+		//показываем диалог
+		//const clickElement=this;
+		//показываем диалог только если включен мобильный
+		if (detMob ){
+			showWndDesc(this.title,this);
+		}
+	});
+	function showWndDesc(cText, circleElement) {
+		//диалог для быстрого прохода по текущим роутам
+		let closeWnd=0;
+		//id
+		const circleId=$(circleElement).data('id');
+		
+		if (document.querySelector('.popupTitle')!=null && document.querySelector('.popupTitle').dataset.id==circleId){
+			closeWnd=1;
+		}
+		// Удаляем старые окна
+		document.querySelectorAll('.popupTitle').forEach(el => el.remove());
+		if (closeWnd){
+			return;
+		}
+		
+		
+		// Получаем позицию точки относительно документа
+		const circleRect = circleElement.getBoundingClientRect();
+		
+		// Пересчитываем в координаты относительно окна с учетом zoom
+		const zoom = Profiles[profileIndex]?.zoom || 1;
+		const absoluteX = circleRect.left;
+		const absoluteY = circleRect.top;
+		
+		// Создаем всплывающее окно
+		const popup = document.createElement('div');
+		popup.className = 'popupTitle';
+		
+		// Добавляем контент и кнопку закрытия
+		let newel=document.querySelector('#tmpPopup').innerHTML;
+		let newhtml=jQuery.trim(newel.replace(/#text#/gi, cText));
+		
+		popup.innerHTML = newhtml;
+		
+		// Позиционируем относительно окна
+		//popup.style.position = 'absolute';
+		//popup.style.marginLeft=circleRect.width+'px'
+		popup.style.marginTop=circleRect.height+'px'
+		popup.style.left = `${absoluteX}px`;
+		popup.style.top = `${absoluteY}px`;
+		popup.dataset.id=circleId;
+		//popup.style.transform = `scale(${1/zoom})`; // Компенсируем zoom
+		
+		// Добавляем новое
+		document.body.appendChild(popup);
+		
+		//корректировка выпадания
+		const poupRect = popup.getBoundingClientRect();
+		const correct=adjustPosition(absoluteX,absoluteY,poupRect.width+circleRect.width,poupRect.height+circleRect.height);
+		popup.style.left = `${absoluteX}px`;
+		popup.style.top = `${absoluteY}px`;
+		if (correct.top!=absoluteY || correct.left!=absoluteX){
+			popup.style.left = correct.left+'px';
+			popup.style.top = correct.top+'px';
+		}
+		
+		// Обработчик завершения и пропуска
+		popup.querySelector('.popup-ignore').addEventListener('click', (e) => {
+			//console.log(e.target);
+			const popup=e.target.closest('.popupTitle');
+			const curId=parseInt(popup.dataset.id);
+			
+			//добавление в игнор лист
+			toIgnoreList(curId);
+			
+			popup.remove();
+			//если включены маршруты, открываем новый попап
+			if (typeof(routeShow)!='undefined' && routeShow){recallWndDesc();}
+		});
+		// Обработчик успешного завершения операции
+		popup.querySelector('.popup-done').addEventListener('click', (e) => {
+			popupDone(e.target.closest('.popupTitle'));
+		});
+		// обработчик сворачивания
+		popup.querySelector('.popup-close').addEventListener('click', () => {
+			popup.remove();
+		});
+		
+		// Обработчик закрытия
+		popup.querySelector('.popup-minimize').addEventListener('click', () => {
+			const clsName='minimized';
+			let pHidden=popup.classList.contains(clsName);
+			if (pHidden){
+				popup.classList.remove(clsName);
+			}
+			else
+			{
+				popup.classList.add(clsName);
+			}
+		});
+		
+	}
+	function popupDone(popup){
+		const curId=parseInt(popup.dataset.id);
+		mycircleDblclick(preId+curId);
+		popup.remove();
+		//если включены маршруты, открываем новый попап
+		if (typeof(routeShow)!='undefined' && routeShow){recallWndDesc();}
+	}
+	function recallWndDesc(){
+		//ищем новый ид по маршрутам	
+		const routes=GetCurRoute();
+		let nextid=null;
+		if (routes.curRoute.length>=1){
+			nextid=routes.curRoute[0];
+			if (nextid.classList.contains('hide')){
+				if (routes.curRoute.length>1){
+					nextid=routes.curRoute[1];
+				}
+				else
+				{
+					nextid=null;
+				}
+			}
+		}
+		if (nextid!=null){
+			centerOnMap($(nextid));
+			DeleteRoute();
+			CreateRoute();
+			showWndDesc(nextid.title,nextid);
+		}	
+	}
+	function adjustPosition(x, y, popupWidth, popupHeight) {
+		//Автоматическое позиционирование (чтобы не выходило за экран)
+		const viewportWidth = window.innerWidth;
+		const viewportHeight = window.innerHeight;
+		
+		// Если попап выходит за правый край
+		if (x + popupWidth > viewportWidth) {
+			x = viewportWidth - popupWidth;
+		}
+		
+		// Если выходит за нижний край
+		if (y + popupHeight > viewportHeight) {
+			y = viewportHeight - popupHeight;
+		}
+		
+		// Если выходит за левый край
+		if (x < 10) x = 10;
+		
+		// Если выходит за верхний край
+		if (y < 10) y = 10;		
+		
+		return { 'left':x, 'top':y };
+	}	
 	$('.mycircle').hover(
 		function(){
 			var el=$(this);
@@ -2297,7 +3144,7 @@ $(document).ready(function() {
 			var el=$(this);
 			el.removeClass('highlight');
 		}
-	);				
+	);
 	$('.btall').on('click',function(e){
 		var par=$('.list-group');
 		var el=$(e.target);
@@ -2367,7 +3214,7 @@ $(document).ready(function() {
 				//запоминаем для истории
 				if (hist){
 					histids.push(tel.data('id'));
-				}						
+				}
 			});
 		}
 		//if it history - activate/remove other list items and our
@@ -2412,7 +3259,10 @@ $(document).ready(function() {
 			setCookie(historyName,JSON.stringify(globhist),{expires:60*60*24*30,path:'/'})
 		}
 	});
-	
+	$('#flylist').on('click','.list-group-item.autohist .icondelHist',function(){
+		//удаляем всю историю
+		DeleteAllHistory();
+	});
 	$('.drawingTools .setColors .mark').on('click',function(){
 		var elmark=$(this);
 		var inputel=elmark.parents('.setColors').find('input[name=setcolors]');
@@ -2429,10 +3279,10 @@ $(document).ready(function() {
 		var inputel=elmark.parents('.setColors').find('input[name=setcolors]');
 		inputel.click();
 		inputel.one('change',function(){
-			var elinp=$(this);
-			var color=elinp.val();
-			elmark.data('color',color);
-			elmark.css('background',color);
+		var elinp=$(this);
+		var color=elinp.val();
+		elmark.data('color',color);
+		elmark.css('background',color);
 		});
 	});*/
 	$('.drawingToolsSetup .setOptions .mark').on('click',function(){
@@ -2446,17 +3296,49 @@ $(document).ready(function() {
 			elmark.css('background',color);
 		});
 	});
-	
 	$('.helpp > div > h2').on('click',function(){
 		$(this).next().toggleClass('hide');
 	});
 	$('.langSelect .langCh').on('click',function(){
 		$(this).next().toggleClass('hide');
 	});
+	//menuaction
+	$('#flyProf .menuaction').on('click',function(event){
+		$('#flycMenu').toggleClass('hide');
+	});
+	$('#flyProf .oneaction').on('click',function(event){
+		$('#flyaoMenu').toggleClass('hide');
+	});
+	$('#flyProf .setupBtn').on('click',function(event){
+		$('#setupDlg').toggleClass('hide');
+	});
+	$('#setupDlg .textKeyChange').on('click',function(){
+		//нажали на смену горячей клавиши, включаем режим отлова клавиш
+		var allSibs=$('#setupDlg .list-group-item');
+		var thisGroup=$(this).parent('.list-group-item');
+		//индекс
+		var indexPar=allSibs.index(thisGroup);
+		keyBinging=indexPar;
+		allSibs.removeClass('active');
+		thisGroup.addClass('active');
+		event.preventDefault();
+	});
+	$('#setupDlg .keysReset').on('click',function(){
+		//reset настроек
+		customKeys={};
+		//обновляем внутренние настройки клавиш
+		mergeCustomKeys();
+		//обновляем настройки
+		globSettings['customKeys']=customKeys;
+		saveSettings();
+		//обновляем вид диалогов настройки клавиш
+		setupCustomKeys();
+		event.preventDefault();
+	});
 	//searchbtn
 	$('.searchbtn').on('click',function(){
 		//Поиск
-		$('.searchdlg').toggleClass('hide');		
+		$('.searchdlg').toggleClass('hide');
 	});
 	$('.searchdlg input').on('keyup',function(event){
 		var countpta,profi,curpta;
@@ -2500,8 +3382,6 @@ $(document).ready(function() {
 				var newid,cce,newel;
 				//sresult.concat(otresult);
 				for (var i=0;i<sresult.length;i++){
-					//cce=$('#'+sresult[i]);
-					//newid=cce.get(0).id;
 					//у нас есть id - берем с маркеров на карте описания
 					newel = $($.parseHTML( jQuery.trim(tmplist.replace(/#text#/gi, $('#'+sresult[i].id).attr('title')+" ("+sresult[i].id+")"))));
 					newel.find('.icon').remove();
@@ -2509,13 +3389,17 @@ $(document).ready(function() {
 					newel.data('profile',sresult[i].profile);
 					newel.on('click',function(event){
 						var profileCur=$(this).data('profile');
-						var sibs=$('#flyProf .list-group-item');
+						var sibs=$('#flyProf .mainfly .list-group-item');
 						if (profileCur!=profileIndex){
-							sibs.eq(profileCur+1).click();
+							sibs.eq(profileCur).click();
 							//Выключение истории
 							$('#flylist .autohist .list-group-item-heading .icon').click();
 						}
-						centerOnMap($('#'+$(this).data('id')));
+						let el=$('#'+$(this).data('id'));
+						centerOnMap(el);
+						//подсветка
+						el.addClass('pulse')						
+						setTimeout(() => el.removeClass('pulse'),1500);
 					});
 					sdlgwnd.append(newel)
 				}
@@ -2526,13 +3410,17 @@ $(document).ready(function() {
 					newel.data('profile',otresult[i].profile);
 					newel.on('click',function(event){
 						var profileCur=$(this).data('profile');
-						var sibs=$('#flyProf .list-group-item');
+						var sibs=$('#flyProf .mainfly .list-group-item');
 						if (profileCur!=profileIndex){
-							sibs.eq(profileCur+1).click();
-							//Выключение истории
+							sibs.eq(profileCur).click();
+							//Выключение истории 
 							$('#flylist .autohist .list-group-item-heading .icon').click();
 						}
-						centerOnMap($('#'+$(this).data('id')));						
+						let el=$('#'+$(this).data('id'));
+						centerOnMap(el);
+						//подсветка
+						el.addClass('pulse')						
+						setTimeout(() => el.removeClass('pulse'),1500);
 					});
 					sdlgwnd.append(newel)
 				}
@@ -2540,11 +3428,10 @@ $(document).ready(function() {
 		}
 	})
 	function centerOnMap(el){
-		//+поправка на скролл, скролла нет
-		var btnx=el.get(0).offsetLeft-window.pageXOffset;
-		var btny=el.get(0).offsetTop-window.pageYOffset;
-		var sx=$('body').width();//screen.width;
-		var sy=$('body').height();//screen.height;
+		var btnx=el.get(0).offsetLeft;
+		var btny=el.get(0).offsetTop;
+		var sx=window.innerWidth/2;//screen.width center;
+		var sy=window.innerHeight/2;//screen.height center;
 		var mainpic=$('#mainpic');
 		var curscale=1;
 		if (typeof(Profiles[profileIndex].zoom)!=undefined){
@@ -2558,24 +3445,38 @@ $(document).ready(function() {
 		var mapnullw=(mainpic.width()*(curscale-1))/2;
 		var mapnullh=(mainpic.height()*(curscale-1))/2;
 		//и минус пол. кнопки - (20/2
-		$('#mainpic').css('left',sx/2+mapnullw-(btnx*curscale)-bonusbtn-(20/2)+'px');
-		$('#mainpic').css('top',sy/2+mapnullh-(btny*curscale)-bonusbtn-(20/2)+'px');
+		
+		//мы должны корректировать центр экрана x, чтобы правый список (как и левый) не загораживал обзор
+		//мы должны прибавить расстояние до границы правого угла и полурасстояние между правым и левым углом.
+		let flyw=document.querySelector('#flylist .container').offsetWidth; //ширина списка групп слева
+		let flyprof=document.querySelector('#flyProf .container').offsetWidth;// ширина списка карт и прочего.
+		let wBound=window.innerWidth-flyw-flyprof; //пространство посередине
+		sx=flyw+wBound/2; //ставим новый центр
+		
+		$('#mainpic').css('left',(mapnullw-(btnx*curscale)-bonusbtn-(20/2))+sx+'px');
+		$('#mainpic').css('top',(mapnullh-(btny*curscale)-bonusbtn-(20/2))+sy+'px');
 	}
 	//Очистка истории
 	$('.maingroups').on('click','.list-group-item.autohist h4',function(event){
 		if (event.altKey){
-			globhist=[];
-			//update history
-			setCookie(historyName,JSON.stringify(globhist),{expires:60*60*24*30,path:'/'})
-			//также надо удалить метки
-			$('.maingroups .list-group-item.autohist .list-group-item-text').remove();
+			DeleteAllHistory();
 		}
 	});
+	function DeleteAllHistory(){
+		globhist=[];
+		//update history
+		setCookie(historyName,JSON.stringify(globhist),{expires:60*60*24*30,path:'/'})
+		//также надо удалить метки
+		$('.maingroups .list-group-item.autohist .list-group-item-text').remove();
+		//UpdateCountGr();
+		//перезагрузка
+		profileSelect(profileIndex);
+	}
 	//работа с куками
 	function getCookie(name) {
 		//устаревшее
 		matches=[];
-		matches[1]=localStorage.getItem(historyName);
+		matches[1]=localStorage.getItem(name);
 		ret=matches ? decodeURIComponent(matches[1]) : undefined;
 		return ret;
 	}
@@ -2586,8 +3487,87 @@ $(document).ready(function() {
 		localStorage.setItem(name, value);
 	}
 	function deleteCookie(name) {
-		//устаревшее
 		localStorage.removeItem(name);
-	}	
+	}
 	//работа с куками
-});																									 																														33
+	function swapObj(obj) {
+		//меняет значение на ключи
+		return Object.fromEntries(Object.entries(obj).map(([key,value])=>[value,key]));
+	}
+	function getKeysArr() {
+		var keys={
+			48:'0',
+			49:'1',
+			50:'2',
+			51:'3',
+			52:'4',
+			53:'5',
+			54:'6',
+			55:'7',
+			56:'8',
+			57:'9',
+			65:'a',
+			66:'b',
+			67:'c',
+			68:'d',
+			69:'e',
+			70:'f',
+			71:'g',
+			72:'h',
+			73:'i',
+			74:'j',
+			75:'k',
+			76:'l',
+			77:'m',
+			78:'n',
+			79:'o',
+			80:'p',
+			81:'q',
+			82:'r',
+			83:'s',
+			84:'t',
+			85:'u',
+			86:'v',
+			87:'w',
+			88:'x',
+			89:'y',
+			90:'z',
+			//open bracket	219
+			219:'[',
+			//close bracket	221
+			221:']',
+			
+		};
+		return keys;
+	}
+	function translateKeyChar(keynum){
+		//обратный перевод - из буквы в число
+		var arrkeys=swapObj(getKeysArr());
+		var result='';
+		if (keynum in arrkeys){
+			result=arrkeys[keynum];
+		}
+	return result;	}
+	function translateKeyNum(keynum){
+		//перевод клавиш из номера в строку
+		var arrkeys=getKeysArr();
+		var result='';
+		if (keynum in arrkeys){
+			result=arrkeys[keynum];
+		}
+		return result;
+	}
+	function setBaseHref() {
+		let base = document.querySelector('base');
+		const isGitHub = window.location.host.includes('github.io');
+		const repoName = window.location.pathname.split('/')[1] || '';
+		if (isGitHub && repoName){
+			let base = document.createElement('base');
+			base.href = `/${repoName}/`;
+			document.head.prepend(base);
+		}
+	}
+	function detectMob() {
+		return ( ( window.innerWidth <= 800 ));
+	}
+});																									
